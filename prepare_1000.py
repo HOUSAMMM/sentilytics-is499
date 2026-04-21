@@ -4,8 +4,9 @@ import re
 import os
 from openai import OpenAI
 
-OPENAI_API_KEY = "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"
-client = OpenAI(api_key=OPENAI_API_KEY)
+from dotenv import load_dotenv
+load_dotenv()
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 BATCH_SIZE = 30
 

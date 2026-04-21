@@ -15,6 +15,9 @@ env/
 .env
 .venv/
 
+# Environment variables
+.env
+
 # Flask
 instance/
 *.db

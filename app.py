@@ -13,7 +13,9 @@ app = Flask(__name__)
 app.secret_key = "sentilytics-secret-key-change-me"
 
 # ---------------- OpenAI ----------------
-OPENAI_API_KEY = "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"
+from dotenv import load_dotenv
+load_dotenv()
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 openai_client = OpenAI(api_key=OPENAI_API_KEY)
 
 
