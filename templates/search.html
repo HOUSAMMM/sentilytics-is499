@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+{% block title %}Search — Sentilytics{% endblock %}
+{% block page_title %}
+  <i class="ti ti-search me-2" style="color:#4361ee;"></i>Sentiment Search
+{% endblock %}
+{% block page_subtitle %}Enter a keyword to discover sentiment insights from technology discussions{% endblock %}
+
+{% block content %}
+<div class="row row-cards g-4">
+
+  <!-- Search Form -->
+  <div class="col-12 col-lg-7">
+    <div class="card border-0 shadow-sm" style="border-radius:14px; overflow:hidden;">
+      <div style="height:4px; background: linear-gradient(90deg,#4361ee,#7209b7,#f72585);"></div>
+      <div class="card-body p-4">
+        <h3 class="fw-bold mb-1" style="color:#1e293b;">Analyze Sentiment</h3>
+        <p class="text-secondary mb-4">Search for a topic and we'll analyze the sentiment of related comments</p>
+
+        <form method="post" action="{{ url_for('search_post') }}">
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Keyword</label>
+            <div class="input-group input-group-lg">
+              <span class="input-group-text" style="background:#f1f5f9; border-right:none;">
+                <i class="ti ti-tag text-secondary"></i>
+              </span>
+              <input name="keyword" class="form-control" style="border-left:none;"
+                     placeholder="e.g. AI, iPhone, Cybersecurity, Python..." required autofocus>
+            </div>
+          </div>
+
+          <!-- Suggested keywords -->
+          <div class="mb-4">
+            <span class="text-secondary small me-2">Try:</span>
+            {% for kw in ["AI", "iPhone", "Python", "Cloud", "Security"] %}
+            <button type="button" class="btn btn-sm btn-outline-secondary me-1 mb-1 suggestion-btn"
+                    style="border-radius:20px; font-size:0.78rem;"
+                    onclick="document.querySelector('[name=keyword]').value='{{ kw }}'">
+              {{ kw }}
+            </button>
+            {% endfor %}
+          </div>
+
+          <button type="submit" id="searchBtn" class="btn btn-primary btn-lg w-100 fw-semibold" style="border-radius:10px;">
+            <i class="ti ti-chart-donut me-2"></i>Search & Analyze
+          </button>
+        </form>
+
+        <!-- Loading overlay -->
+        <div id="loadingOverlay" class="d-none mt-4 text-center py-4">
+          <div class="spinner-border mb-3" style="color:#4361ee; width:3rem; height:3rem;" role="status"></div>
+          <p class="fw-semibold text-dark mb-1">Analyzing sentiment...</p>
+          <p class="text-secondary small">Fetching comments and running AI analysis. Please wait.</p>
+        </div>
+
+        <script>
+          document.querySelector('form').addEventListener('submit', function() {
+            document.getElementById('searchBtn').disabled = true;
+            document.getElementById('searchBtn').innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Analyzing...';
+            document.getElementById('loadingOverlay').classList.remove('d-none');
+          });
+        </script>
+      </div>
+    </div>
+  </div>
+
+  <!-- Recent Searches -->
+  <div class="col-12 col-lg-5">
+    <div class="card border-0 shadow-sm h-100" style="border-radius:14px;">
+      <div class="card-header border-0 pb-0" style="background:transparent;">
+        <div class="d-flex align-items-center gap-2">
+          <div class="rounded p-2" style="background:rgba(67,97,238,0.1);">
+            <i class="ti ti-history" style="color:#4361ee;"></i>
+          </div>
+          <h3 class="card-title mb-0 fw-bold">Recent Searches</h3>
+        </div>
+      </div>
+
+      <div class="card-body p-0 pt-2">
+        {% if searches and searches|length > 0 %}
+          <div class="list-group list-group-flush">
+            {% for s in searches %}
+              <a class="list-group-item list-group-item-action px-4 py-3 border-0"
+                 href="{{ url_for('dashboard', search_id=s.id) }}"
+                 style="transition: background 0.15s;">
+                <div class="d-flex justify-content-between align-items-center">
+                  <div class="d-flex align-items-center gap-2">
+                    <span class="badge rounded-pill"
+                          style="background:rgba(67,97,238,0.1); color:#4361ee; font-size:0.7rem;">
+                      #{{ loop.index }}
+                    </span>
+                    <span class="fw-semibold text-dark">{{ s.keyword }}</span>
+                  </div>
+                  <div class="d-flex align-items-center gap-2">
+                    <span class="text-secondary" style="font-size:0.78rem;">
+                      {{ s.created_at.strftime("%b %d, %H:%M") }}
+                    </span>
+                    <i class="ti ti-chevron-right text-secondary" style="font-size:0.8rem;"></i>
+                  </div>
+                </div>
+              </a>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div class="text-center py-5">
+            <i class="ti ti-search-off" style="font-size:2.5rem; color:#cbd5e1;"></i>
+            <p class="text-secondary mt-2 mb-0">No searches yet.</p>
+            <p class="text-secondary small">Your search history will appear here</p>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

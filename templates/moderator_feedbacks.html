@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+{% block title %}Feedbacks — Sentilytics{% endblock %}
+{% block page_title %}
+  <i class="ti ti-messages me-2" style="color:#4361ee;"></i>Feedbacks
+{% endblock %}
+{% block page_subtitle %}Review and manage user-submitted feedback{% endblock %}
+
+{% block content %}
+<div class="card border-0 shadow-sm" style="border-radius:14px; overflow:hidden;">
+  <div style="height:4px; background:linear-gradient(90deg,#f72585,#7209b7);"></div>
+
+  <div class="card-header border-0">
+    <div class="d-flex align-items-center justify-content-between">
+      <div class="d-flex align-items-center gap-2">
+        <div class="rounded p-2" style="background:rgba(247,37,133,0.1);">
+          <i class="ti ti-messages" style="color:#f72585;"></i>
+        </div>
+        <h3 class="card-title mb-0 fw-bold">All Feedbacks</h3>
+      </div>
+      {% if items %}
+      <span class="badge rounded-pill px-3 py-2" style="background:rgba(247,37,133,0.1); color:#f72585;">
+        {{ items|length }} total
+      </span>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="table-responsive">
+    <table class="table table-vcenter card-table mb-0">
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>User</th>
+          <th>Keyword</th>
+          <th style="width:60px;">Rating</th>
+          <th>Message</th>
+          <th>Status</th>
+          <th class="text-end">Action</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% if items and items|length > 0 %}
+        {% for fb, u, s in items %}
+        <tr>
+          <td class="text-secondary small" style="white-space:nowrap;">
+            {{ fb.created_at.strftime("%b %d, %Y") }}<br>
+            <span style="font-size:0.75rem;">{{ fb.created_at.strftime("%H:%M") }}</span>
+          </td>
+          <td>
+            <div class="d-flex align-items-center gap-2">
+              <span class="avatar avatar-sm rounded-circle fw-bold text-white"
+                    style="background:linear-gradient(135deg,#4361ee,#7209b7); font-size:0.72rem; min-width:32px;">
+                {{ u.name[0].upper() }}
+              </span>
+              <div>
+                <div class="fw-semibold small">{{ u.name }}</div>
+                <div class="text-secondary" style="font-size:0.72rem;">{{ u.email }}</div>
+              </div>
+            </div>
+          </td>
+          <td>
+            <span class="badge px-2 py-1" style="background:rgba(67,97,238,0.1); color:#4361ee; border-radius:6px; font-size:0.78rem;">
+              {{ s.keyword }}
+            </span>
+          </td>
+          <td class="text-center">
+            {% if fb.rating %}
+              <span class="fw-bold" style="color:#f59e0b; font-size:1rem;">{{ fb.rating }}</span>
+              <span style="color:#f59e0b; font-size:0.7rem;">/ 5</span>
+            {% else %}
+              <span class="text-secondary">—</span>
+            {% endif %}
+          </td>
+          <td style="max-width:380px;">
+            <span class="text-dark" style="font-size:0.85rem; line-height:1.5;">{{ fb.message }}</span>
+          </td>
+          <td>
+            {% if fb.status == "NEW" %}
+              <span class="badge px-3 py-2" style="background:rgba(245,158,11,0.1); color:#f59e0b; border-radius:20px;">
+                <i class="ti ti-clock me-1"></i>New
+              </span>
+            {% else %}
+              <span class="badge px-3 py-2" style="background:rgba(16,185,129,0.1); color:#10b981; border-radius:20px;">
+                <i class="ti ti-circle-check me-1"></i>Reviewed
+              </span>
+            {% endif %}
+          </td>
+          <td class="text-end">
+            {% if fb.status == "NEW" %}
+            <form method="POST" action="{{ url_for('mark_feedback_reviewed', feedback_id=fb.id) }}">
+              <button class="btn btn-sm fw-semibold" type="submit"
+                style="border-radius:8px; background:rgba(16,185,129,0.1); color:#10b981; border:1px solid rgba(16,185,129,0.3);">
+                <i class="ti ti-check me-1"></i>Mark Reviewed
+              </button>
+            </form>
+            {% else %}
+              <span class="text-secondary small">Done</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      {% else %}
+        <tr>
+          <td colspan="7" class="text-center py-5">
+            <i class="ti ti-messages-off" style="font-size:2.5rem; color:#cbd5e1;"></i>
+            <p class="text-secondary mt-2 mb-0">No feedback submitted yet.</p>
+          </td>
+        </tr>
+      {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

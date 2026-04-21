@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% block title %}Edit Profile — Sentilytics{% endblock %}
+{% block page_title %}
+  <i class="ti ti-user-edit me-2" style="color:#4361ee;"></i>Edit Profile
+{% endblock %}
+{% block page_subtitle %}Update your account information{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+
+  <!-- Edit Profile Card -->
+  <div class="col-12 col-lg-6">
+    <div class="card border-0 shadow-sm" style="border-radius:14px; overflow:hidden;">
+      <div style="height:4px; background:linear-gradient(90deg,#4361ee,#7209b7);"></div>
+      <div class="card-header border-0">
+        <div class="d-flex align-items-center gap-2">
+          <div class="rounded p-2" style="background:rgba(67,97,238,0.1);">
+            <i class="ti ti-user-circle" style="color:#4361ee;"></i>
+          </div>
+          <div>
+            <h3 class="card-title mb-0 fw-bold">Profile Information</h3>
+            <div class="text-secondary small">Change your name or email address</div>
+          </div>
+        </div>
+      </div>
+      <div class="card-body p-4">
+        <form method="POST" action="{{ url_for('account_edit_post') }}">
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Full Name</label>
+            <div class="input-group">
+              <span class="input-group-text" style="background:#f8fafc; border-right:0;">
+                <i class="ti ti-user" style="color:#4361ee;"></i>
+              </span>
+              <input type="text" class="form-control" name="name"
+                     value="{{ user.name }}" required
+                     style="border-left:0;"
+                     placeholder="Your full name">
+            </div>
+          </div>
+          <div class="mb-4">
+            <label class="form-label fw-semibold">Email Address</label>
+            <div class="input-group">
+              <span class="input-group-text" style="background:#f8fafc; border-right:0;">
+                <i class="ti ti-mail" style="color:#4361ee;"></i>
+              </span>
+              <input type="email" class="form-control" name="email"
+                     value="{{ user.email }}" required
+                     style="border-left:0;"
+                     placeholder="your@email.com">
+            </div>
+          </div>
+          <button type="submit" class="btn btn-primary fw-semibold px-4" style="border-radius:8px;">
+            <i class="ti ti-check me-2"></i>Save Changes
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Delete Account Card -->
+  <div class="col-12 col-lg-6">
+    <div class="card border-0 shadow-sm" style="border-radius:14px; overflow:hidden;">
+      <div style="height:4px; background:linear-gradient(90deg,#ef4444,#b91c1c);"></div>
+      <div class="card-header border-0">
+        <div class="d-flex align-items-center gap-2">
+          <div class="rounded p-2" style="background:rgba(239,68,68,0.1);">
+            <i class="ti ti-trash" style="color:#ef4444;"></i>
+          </div>
+          <div>
+            <h3 class="card-title mb-0 fw-bold" style="color:#ef4444;">Delete Account</h3>
+            <div class="text-secondary small">This action is permanent and cannot be undone</div>
+          </div>
+        </div>
+      </div>
+      <div class="card-body p-4">
+        <div class="alert alert-danger d-flex gap-2 align-items-start mb-4" style="border-radius:10px;">
+          <i class="ti ti-alert-triangle fs-4 flex-shrink-0 mt-1"></i>
+          <div>
+            <strong>Warning:</strong> Deleting your account will permanently remove all your searches,
+            analysis results, and feedback. You will be logged out immediately.
+          </div>
+        </div>
+        <form method="POST" action="{{ url_for('account_delete') }}"
+              onsubmit="return confirm('Are you sure you want to permanently delete your account? This cannot be undone.');">
+          <div class="mb-4">
+            <label class="form-label fw-semibold">Confirm with your password</label>
+            <div class="input-group">
+              <span class="input-group-text" style="background:#f8fafc; border-right:0;">
+                <i class="ti ti-lock" style="color:#ef4444;"></i>
+              </span>
+              <input type="password" class="form-control" name="password" required
+                     style="border-left:0;"
+                     placeholder="Enter your current password">
+            </div>
+          </div>
+          <button type="submit" class="btn fw-semibold px-4"
+                  style="border-radius:8px; background:rgba(239,68,68,0.1); color:#ef4444; border:1px solid rgba(239,68,68,0.3);">
+            <i class="ti ti-trash me-2"></i>Delete My Account
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

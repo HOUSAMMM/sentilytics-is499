@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block title %}Login — Sentilytics{% endblock %}
+
+{% block page_header %}{% endblock %}
+
+{% block content %}
+<div class="min-vh-100 d-flex align-items-center justify-content-center" style="margin-top: -2rem;">
+  <div class="col-12 col-md-5 col-lg-4">
+
+    <!-- Brand header -->
+    <div class="text-center mb-4">
+      <img src="{{ url_for('static', filename='img/logo.png') }}" height="56" alt="Sentilytics" class="mb-3">
+      <h1 class="fw-bold mb-1" style="font-size:1.75rem; background: linear-gradient(135deg,#4361ee,#f72585); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;">
+        Sentilytics
+      </h1>
+      <p class="text-secondary">Sign in to your account</p>
+    </div>
+
+    <!-- Alerts -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="alert alert-{{ category }} d-flex align-items-center gap-2 mb-3">
+            {% if category == 'danger' %}<i class="ti ti-alert-circle fs-5"></i>
+            {% elif category == 'warning' %}<i class="ti ti-alert-triangle fs-5"></i>
+            {% else %}<i class="ti ti-info-circle fs-5"></i>{% endif %}
+            {{ message }}
+          </div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    <!-- Card -->
+    <div class="card shadow-lg border-0" style="border-radius:16px; overflow:hidden;">
+      <div style="height:4px; background: linear-gradient(135deg, #4361ee, #7209b7, #f72585);"></div>
+      <div class="card-body p-4">
+        <form method="post" action="{{ url_for('login_post') }}">
+
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Email address</label>
+            <div class="input-group">
+              <span class="input-group-text bg-light border-end-0">
+                <i class="ti ti-mail text-secondary"></i>
+              </span>
+              <input name="email" type="email" class="form-control border-start-0 ps-0"
+                     placeholder="you@example.com" required autocomplete="email">
+            </div>
+          </div>
+
+          <div class="mb-4">
+            <label class="form-label fw-semibold">Password</label>
+            <div class="input-group">
+              <span class="input-group-text bg-light border-end-0">
+                <i class="ti ti-lock text-secondary"></i>
+              </span>
+              <input name="password" type="password" class="form-control border-start-0 ps-0"
+                     placeholder="••••••••" required autocomplete="current-password">
+            </div>
+          </div>
+
+          <button type="submit" class="btn btn-primary w-100 py-2 fw-semibold" style="border-radius:8px;">
+            <i class="ti ti-login me-2"></i>Sign In
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <div class="text-center text-secondary mt-3">
+      Don't have an account?
+      <a href="{{ url_for('register') }}" class="fw-semibold text-decoration-none" style="color:#4361ee;">
+        Create one free
+      </a>
+    </div>
+
+  </div>
+</div>
+{% endblock %}

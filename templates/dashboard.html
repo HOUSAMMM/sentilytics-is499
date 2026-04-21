@@ -1,0 +1,282 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — Sentilytics{% endblock %}
+{% block page_title %}
+  <i class="ti ti-chart-donut me-2" style="color:#4361ee;"></i>Dashboard
+{% endblock %}
+{% block page_subtitle %}
+  Sentiment results for: <strong style="color:#4361ee;">"{{ keyword }}"</strong>
+{% endblock %}
+
+{% block content %}
+<div class="row row-cards g-4">
+
+  <!-- ---- Stat Cards ---- -->
+  <div class="col-6 col-md-3">
+    <div class="card border-0 shadow-sm text-center stat-card-total" style="border-radius:14px;">
+      <div class="card-body py-4">
+        <div class="mb-2">
+          <span class="avatar avatar-lg rounded-circle" style="background:rgba(67,97,238,0.12);">
+            <i class="ti ti-message-circle" style="color:#4361ee; font-size:1.4rem;"></i>
+          </span>
+        </div>
+        <div class="h2 fw-bold mb-0" style="color:#4361ee;">{{ total_matches }}</div>
+        <div class="text-secondary small mt-1">Comments Found</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-6 col-md-3">
+    <div class="card border-0 shadow-sm text-center stat-card-positive" style="border-radius:14px;">
+      <div class="card-body py-4">
+        <div class="mb-2">
+          <span class="avatar avatar-lg rounded-circle" style="background:rgba(16,185,129,0.12);">
+            <i class="ti ti-mood-happy" style="color:#10b981; font-size:1.4rem;"></i>
+          </span>
+        </div>
+        <div class="h2 fw-bold mb-0" style="color:#10b981;">{{ stats.positive }}%</div>
+        <div class="text-secondary small mt-1">Positive</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-6 col-md-3">
+    <div class="card border-0 shadow-sm text-center stat-card-neutral" style="border-radius:14px;">
+      <div class="card-body py-4">
+        <div class="mb-2">
+          <span class="avatar avatar-lg rounded-circle" style="background:rgba(245,158,11,0.12);">
+            <i class="ti ti-mood-empty" style="color:#f59e0b; font-size:1.4rem;"></i>
+          </span>
+        </div>
+        <div class="h2 fw-bold mb-0" style="color:#f59e0b;">{{ stats.neutral }}%</div>
+        <div class="text-secondary small mt-1">Neutral</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-6 col-md-3">
+    <div class="card border-0 shadow-sm text-center stat-card-negative" style="border-radius:14px;">
+      <div class="card-body py-4">
+        <div class="mb-2">
+          <span class="avatar avatar-lg rounded-circle" style="background:rgba(239,68,68,0.12);">
+            <i class="ti ti-mood-sad" style="color:#ef4444; font-size:1.4rem;"></i>
+          </span>
+        </div>
+        <div class="h2 fw-bold mb-0" style="color:#ef4444;">{{ stats.negative }}%</div>
+        <div class="text-secondary small mt-1">Negative</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ---- Chart ---- -->
+  <div class="col-12 col-lg-5">
+    <div class="card border-0 shadow-sm h-100" style="border-radius:14px; overflow:hidden;">
+      <div style="height:4px; background:linear-gradient(90deg,#10b981,#f59e0b,#ef4444);"></div>
+      <div class="card-header border-0">
+        <div class="d-flex align-items-center gap-2">
+          <div class="rounded p-2" style="background:rgba(67,97,238,0.1);">
+            <i class="ti ti-chart-pie" style="color:#4361ee;"></i>
+          </div>
+          <div>
+            <h3 class="card-title mb-0 fw-bold">Sentiment Breakdown</h3>
+            <div class="text-secondary small d-flex align-items-center gap-1">
+              <i class="ti ti-sparkles" style="color:#f59e0b;"></i>
+              Powered by GPT-4o-mini · {{ labeled_comments|length }} comments analyzed
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="card-body d-flex flex-column align-items-center justify-content-center py-4">
+        <div style="max-width:280px; width:100%;">
+          <canvas id="sentChart"></canvas>
+        </div>
+        <div class="d-flex gap-3 mt-4 flex-wrap justify-content-center">
+          <span class="d-flex align-items-center gap-1">
+            <span class="badge rounded-circle p-2" style="background:#10b981;"></span>
+            <span class="fw-semibold small">Positive {{ stats.positive }}%</span>
+          </span>
+          <span class="d-flex align-items-center gap-1">
+            <span class="badge rounded-circle p-2" style="background:#f59e0b;"></span>
+            <span class="fw-semibold small">Neutral {{ stats.neutral }}%</span>
+          </span>
+          <span class="d-flex align-items-center gap-1">
+            <span class="badge rounded-circle p-2" style="background:#ef4444;"></span>
+            <span class="fw-semibold small">Negative {{ stats.negative }}%</span>
+          </span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ---- Matched Comments ---- -->
+  <div class="col-12 col-lg-7">
+    <div class="card border-0 shadow-sm h-100" style="border-radius:14px; overflow:hidden;">
+      <div style="height:4px; background:linear-gradient(90deg,#4361ee,#7209b7);"></div>
+      <div class="card-header border-0">
+        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+          <div class="d-flex align-items-center gap-2">
+            <div class="rounded p-2" style="background:rgba(67,97,238,0.1);">
+              <i class="ti ti-messages" style="color:#4361ee;"></i>
+            </div>
+            <div>
+              <h3 class="card-title mb-0 fw-bold">Technology Comments</h3>
+              <div class="text-secondary small">Showing {{ labeled_comments|length }} of {{ total_matches }} results</div>
+            </div>
+          </div>
+          <div class="d-flex gap-2 flex-wrap">
+            <button class="btn btn-sm filter-btn active" data-filter="all"
+              style="border-radius:20px; background:rgba(67,97,238,0.15); color:#4361ee; border:1px solid rgba(67,97,238,0.3); font-weight:600;">
+              All
+            </button>
+            <button class="btn btn-sm filter-btn" data-filter="positive"
+              style="border-radius:20px; background:rgba(16,185,129,0.08); color:#10b981; border:1px solid rgba(16,185,129,0.3);">
+              <i class="ti ti-mood-happy me-1"></i>Positive
+            </button>
+            <button class="btn btn-sm filter-btn" data-filter="neutral"
+              style="border-radius:20px; background:rgba(245,158,11,0.08); color:#f59e0b; border:1px solid rgba(245,158,11,0.3);">
+              <i class="ti ti-mood-empty me-1"></i>Neutral
+            </button>
+            <button class="btn btn-sm filter-btn" data-filter="negative"
+              style="border-radius:20px; background:rgba(239,68,68,0.08); color:#ef4444; border:1px solid rgba(239,68,68,0.3);">
+              <i class="ti ti-mood-sad me-1"></i>Negative
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card-body p-0" style="max-height:420px; overflow-y:auto;">
+        {% if labeled_comments and labeled_comments|length > 0 %}
+          {% for item in labeled_comments %}
+          <div class="px-4 py-3 d-flex align-items-start gap-3 {% if not loop.last %}border-bottom{% endif %} comment-row"
+               data-sentiment="{{ item.sentiment | lower }}" style="transition: background 0.15s;">
+
+            <!-- Sentiment Badge -->
+            {% if item.sentiment == "positive" %}
+              <span class="badge flex-shrink-0 mt-1 px-2 py-1"
+                    style="background:rgba(16,185,129,0.12); color:#10b981; border-radius:6px; font-size:0.7rem; white-space:nowrap;">
+                <i class="ti ti-mood-happy me-1"></i>Positive
+              </span>
+            {% elif item.sentiment == "negative" %}
+              <span class="badge flex-shrink-0 mt-1 px-2 py-1"
+                    style="background:rgba(239,68,68,0.12); color:#ef4444; border-radius:6px; font-size:0.7rem; white-space:nowrap;">
+                <i class="ti ti-mood-sad me-1"></i>Negative
+              </span>
+            {% else %}
+              <span class="badge flex-shrink-0 mt-1 px-2 py-1"
+                    style="background:rgba(245,158,11,0.12); color:#f59e0b; border-radius:6px; font-size:0.7rem; white-space:nowrap;">
+                <i class="ti ti-mood-empty me-1"></i>Neutral
+              </span>
+            {% endif %}
+
+            <span class="text-dark" style="font-size:0.87rem; line-height:1.6;">{{ item.text }}</span>
+          </div>
+          {% endfor %}
+        {% else %}
+          <div class="text-center py-5">
+            <i class="ti ti-mood-confuzed" style="font-size:2.5rem; color:#cbd5e1;"></i>
+            <p class="text-secondary mt-2 mb-0">No comments found on HackerNews</p>
+            <p class="text-secondary small">Try a different keyword</p>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- ---- Feedback Form ---- -->
+  <div class="col-12">
+    <div class="card border-0 shadow-sm" style="border-radius:14px; overflow:hidden;">
+      <div style="height:4px; background:linear-gradient(90deg,#f72585,#7209b7);"></div>
+      <div class="card-header border-0">
+        <div class="d-flex align-items-center gap-2">
+          <div class="rounded p-2" style="background:rgba(247,37,133,0.1);">
+            <i class="ti ti-star" style="color:#f72585;"></i>
+          </div>
+          <div>
+            <h3 class="card-title mb-0 fw-bold">Rate These Results</h3>
+            <div class="text-secondary small">Your feedback helps us improve accuracy</div>
+          </div>
+        </div>
+      </div>
+      <div class="card-body p-4">
+        <form method="POST" action="{{ url_for('submit_feedback', search_id=search_id) }}">
+          <div class="row g-3">
+            <div class="col-12 col-md-4">
+              <label class="form-label fw-semibold">Accuracy Rating</label>
+              <select class="form-select" name="rating" required>
+                <option value="" selected disabled>Choose a rating...</option>
+                <option value="5">⭐⭐⭐⭐⭐ — Very accurate</option>
+                <option value="4">⭐⭐⭐⭐ — Accurate</option>
+                <option value="3">⭐⭐⭐ — Neutral</option>
+                <option value="2">⭐⭐ — Not accurate</option>
+                <option value="1">⭐ — Very inaccurate</option>
+              </select>
+            </div>
+            <div class="col-12 col-md-8">
+              <label class="form-label fw-semibold">Your Comment</label>
+              <textarea class="form-control" name="message" rows="2" required
+                placeholder="What was good? What needs improvement?"></textarea>
+            </div>
+          </div>
+          <div class="mt-3">
+            <button class="btn btn-primary fw-semibold px-4" type="submit" style="border-radius:8px;">
+              <i class="ti ti-send me-2"></i>Submit Feedback
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+  // --- Sentiment Filter ---
+  document.addEventListener('DOMContentLoaded', function() {
+    function applyFilter(filter) {
+      document.querySelectorAll('.filter-btn').forEach(b => {
+        b.style.fontWeight = b.dataset.filter === filter ? '700' : '';
+        b.style.opacity    = b.dataset.filter === filter ? '1'   : '0.6';
+      });
+      document.querySelectorAll('.comment-row').forEach(row => {
+        const s = (row.getAttribute('data-sentiment') || '').trim().toLowerCase();
+        row.style.display = (filter === 'all' || s === filter) ? 'flex' : 'none';
+      });
+    }
+
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+      btn.addEventListener('click', function() { applyFilter(this.dataset.filter); });
+    });
+
+    applyFilter('all');
+  });
+
+  const stats = JSON.parse('{{ stats | tojson | safe }}');
+  const ctx = document.getElementById('sentChart');
+  new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: ['Positive', 'Neutral', 'Negative'],
+      datasets: [{
+        data: [stats.positive, stats.neutral, stats.negative],
+        backgroundColor: ['#10b981', '#f59e0b', '#ef4444'],
+        borderWidth: 0,
+        hoverOffset: 8
+      }]
+    },
+    options: {
+      responsive: true,
+      cutout: '72%',
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: ctx => ` ${ctx.label}: ${ctx.parsed}%`
+          }
+        }
+      }
+    }
+  });
+</script>
+{% endblock %}

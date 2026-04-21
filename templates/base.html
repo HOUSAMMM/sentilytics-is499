@@ -1,0 +1,381 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>{% block title %}Sentilytics{% endblock %}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <!-- Tabler CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/css/tabler.min.css" rel="stylesheet">
+  <!-- Tabler Icons -->
+  <link href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css" rel="stylesheet">
+
+  <link rel="icon" href="{{ url_for('static', filename='img/logo.png') }}">
+
+  <style>
+    :root {
+      --brand-primary: #4361ee;
+      --brand-secondary: #7209b7;
+      --brand-accent: #f72585;
+      --sidebar-bg: #0f172a;
+      --sidebar-text: #94a3b8;
+      --sidebar-active: #4361ee;
+    }
+
+    /* ---- Sidebar ---- */
+    .navbar-vertical {
+      background: var(--sidebar-bg) !important;
+      border-right: 1px solid rgba(255,255,255,0.06) !important;
+      box-shadow: 4px 0 24px rgba(0,0,0,0.3);
+    }
+
+    .navbar-vertical .navbar-brand {
+      padding: 1.25rem 1rem;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+      margin-bottom: 0.5rem;
+    }
+
+    .navbar-vertical .navbar-brand span {
+      font-size: 1.2rem;
+      font-weight: 700;
+      background: linear-gradient(135deg, #4361ee, #f72585);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .navbar-vertical .nav-link {
+      color: var(--sidebar-text) !important;
+      border-radius: 8px;
+      margin: 2px 8px;
+      padding: 0.6rem 1rem !important;
+      font-weight: 500;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+
+    .navbar-vertical .nav-link:hover {
+      background: rgba(67, 97, 238, 0.15) !important;
+      color: #fff !important;
+      transform: translateX(3px);
+    }
+
+    .navbar-vertical .nav-link.active-link {
+      background: rgba(67, 97, 238, 0.25) !important;
+      color: #fff !important;
+      border-left: 3px solid var(--brand-primary);
+    }
+
+    .navbar-vertical .nav-link.text-danger {
+      color: #f87171 !important;
+    }
+    .navbar-vertical .nav-link.text-danger:hover {
+      background: rgba(248, 113, 113, 0.15) !important;
+      color: #fca5a5 !important;
+    }
+
+    .nav-section-label {
+      font-size: 0.65rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: #475569;
+      padding: 1rem 1.5rem 0.35rem;
+    }
+
+    /* ---- Top bar / Header ---- */
+    .page-header {
+      background: linear-gradient(135deg, var(--brand-primary) 0%, var(--brand-secondary) 100%);
+      border-radius: 12px;
+      padding: 1.25rem 1.5rem;
+      margin-bottom: 1.5rem;
+      box-shadow: 0 4px 20px rgba(67, 97, 238, 0.3);
+    }
+
+    .page-header .page-title {
+      color: #fff !important;
+      font-weight: 700;
+      margin: 0;
+    }
+
+    .page-header .text-secondary {
+      color: rgba(255,255,255,0.75) !important;
+    }
+
+    .page-header .welcome-badge {
+      background: rgba(255,255,255,0.15);
+      border: 1px solid rgba(255,255,255,0.25);
+      border-radius: 50px;
+      padding: 0.4rem 1rem;
+      color: #fff;
+      font-size: 0.875rem;
+      backdrop-filter: blur(4px);
+    }
+
+    /* ---- Cards ---- */
+    .card {
+      border: 1px solid rgba(0,0,0,0.06);
+      border-radius: 12px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+      transition: box-shadow 0.2s ease;
+    }
+
+    .card:hover {
+      box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+    }
+
+    .card-header {
+      border-bottom: 1px solid rgba(0,0,0,0.06);
+      background: transparent;
+      padding: 1rem 1.25rem;
+    }
+
+    .card-title {
+      font-weight: 700;
+      color: #1e293b;
+    }
+
+    /* ---- Alerts ---- */
+    .alert {
+      border-radius: 10px;
+      border: none;
+      font-weight: 500;
+    }
+
+    /* ---- Buttons ---- */
+    .btn-primary {
+      background: linear-gradient(135deg, var(--brand-primary), var(--brand-secondary));
+      border: none;
+      box-shadow: 0 4px 12px rgba(67, 97, 238, 0.35);
+      transition: all 0.2s ease;
+    }
+    .btn-primary:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 18px rgba(67, 97, 238, 0.45);
+    }
+
+    /* ---- Body ---- */
+    body {
+      background: #f1f5f9 !important;
+    }
+
+    .page-wrapper {
+      background: #f1f5f9;
+    }
+
+    /* ---- Table ---- */
+    .table thead th {
+      background: #f8fafc;
+      font-weight: 700;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #64748b;
+      border-bottom: 2px solid #e2e8f0;
+    }
+
+    .table tbody tr:hover {
+      background: #f8fafc;
+    }
+
+    /* ---- Stat cards ---- */
+    .stat-card-positive { border-top: 4px solid #10b981; }
+    .stat-card-neutral  { border-top: 4px solid #f59e0b; }
+    .stat-card-negative { border-top: 4px solid #ef4444; }
+    .stat-card-total    { border-top: 4px solid var(--brand-primary); }
+
+    .btn-toggle-disable {
+      border-radius: 8px;
+      background: rgba(245,158,11,0.1);
+      color: #f59e0b;
+      border: 1px solid rgba(245,158,11,0.3);
+    }
+    .btn-toggle-enable {
+      border-radius: 8px;
+      background: rgba(16,185,129,0.1);
+      color: #10b981;
+      border: 1px solid rgba(16,185,129,0.3);
+    }
+    .btn-delete-user {
+      border-radius: 8px;
+      background: rgba(239,68,68,0.1);
+      color: #ef4444;
+      border: 1px solid rgba(239,68,68,0.3);
+    }
+  </style>
+</head>
+
+<body class="layout-fluid">
+<div class="page">
+
+  <!-- Sidebar -->
+  <aside class="navbar navbar-vertical navbar-expand-lg">
+    <div class="container-fluid">
+
+      <!-- Logo -->
+      <h1 class="navbar-brand mb-0 py-0">
+        <a href="{{ url_for('root') }}" class="d-flex align-items-center gap-2 text-decoration-none">
+          <img src="{{ url_for('static', filename='img/logo.png') }}" height="32" alt="Sentilytics">
+          <span>Sentilytics</span>
+        </a>
+      </h1>
+
+      <!-- Toggle for mobile -->
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar-menu">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+
+      <div class="collapse navbar-collapse" id="navbar-menu">
+        <ul class="navbar-nav pt-lg-2">
+
+          {% if session.get("user_id") %}
+            <li class="nav-item">
+              <span class="nav-section-label">Main</span>
+            </li>
+
+            <li class="nav-item">
+              <a class="nav-link {% if request.endpoint == 'search' %}active-link{% endif %}"
+                 href="{{ url_for('search') }}">
+                <i class="ti ti-search fs-4"></i>
+                <span class="nav-link-title">Search</span>
+              </a>
+            </li>
+
+            <li class="nav-item">
+              <a class="nav-link {% if request.endpoint in ['dashboard', 'dashboard_latest'] %}active-link{% endif %}"
+                 href="{{ url_for('dashboard_latest') }}">
+                <i class="ti ti-chart-donut fs-4"></i>
+                <span class="nav-link-title">Dashboard</span>
+              </a>
+            </li>
+
+            <li class="nav-item">
+              <span class="nav-section-label">Account</span>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link {% if request.endpoint == 'account_edit' %}active-link{% endif %}"
+                 href="{{ url_for('account_edit') }}">
+                <i class="ti ti-user-edit fs-4"></i>
+                <span class="nav-link-title">Edit Profile</span>
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link {% if request.endpoint == 'account_password' %}active-link{% endif %}"
+                 href="{{ url_for('account_password') }}">
+                <i class="ti ti-lock fs-4"></i>
+                <span class="nav-link-title">Change Password</span>
+              </a>
+            </li>
+
+            {% if session.get("is_moderator") %}
+            <li class="nav-item">
+              <span class="nav-section-label">Moderator</span>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link {% if request.endpoint == 'moderator_users' %}active-link{% endif %}"
+                 href="{{ url_for('moderator_users') }}">
+                <i class="ti ti-users fs-4"></i>
+                <span class="nav-link-title">Users</span>
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link {% if request.endpoint == 'moderator_feedbacks' %}active-link{% endif %}"
+                 href="{{ url_for('moderator_feedbacks') }}">
+                <i class="ti ti-messages fs-4"></i>
+                <span class="nav-link-title">Feedbacks</span>
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link {% if request.endpoint == 'moderator_logs' %}active-link{% endif %}"
+                 href="{{ url_for('moderator_logs') }}">
+                <i class="ti ti-activity fs-4"></i>
+                <span class="nav-link-title">Logs</span>
+              </a>
+            </li>
+            {% endif %}
+
+            <li class="nav-item mt-3">
+              <a class="nav-link text-danger" href="{{ url_for('logout') }}">
+                <i class="ti ti-logout fs-4"></i>
+                <span class="nav-link-title">Logout</span>
+              </a>
+            </li>
+
+          {% else %}
+            <li class="nav-item">
+              <a class="nav-link {% if request.endpoint == 'login' %}active-link{% endif %}"
+                 href="{{ url_for('login') }}">
+                <i class="ti ti-login fs-4"></i>
+                <span class="nav-link-title">Login</span>
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link {% if request.endpoint == 'register' %}active-link{% endif %}"
+                 href="{{ url_for('register') }}">
+                <i class="ti ti-user-plus fs-4"></i>
+                <span class="nav-link-title">Create Account</span>
+              </a>
+            </li>
+          {% endif %}
+
+        </ul>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main Content -->
+  <div class="page-wrapper">
+    <div class="container-xl py-4">
+
+      <!-- Page Header -->
+      {% block page_header %}
+      <div class="page-header d-print-none">
+        <div class="row align-items-center">
+          <div class="col">
+            <h2 class="page-title">{% block page_title %}{% endblock %}</h2>
+            <div class="text-secondary mt-1">{% block page_subtitle %}{% endblock %}</div>
+          </div>
+
+          {% if session.get("user_name") %}
+          <div class="col-auto">
+            <span class="welcome-badge d-flex align-items-center gap-2">
+              <i class="ti ti-user-circle"></i>
+              {{ session.get("user_name") }}
+            </span>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+      {% endblock %}
+
+      <!-- Alerts -->
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          {% for category, message in messages %}
+            <div class="alert alert-{{ category }} mt-3 d-flex align-items-center gap-2">
+              {% if category == 'success' %}<i class="ti ti-circle-check fs-4"></i>
+              {% elif category == 'danger' %}<i class="ti ti-alert-circle fs-4"></i>
+              {% elif category == 'warning' %}<i class="ti ti-alert-triangle fs-4"></i>
+              {% else %}<i class="ti ti-info-circle fs-4"></i>{% endif %}
+              {{ message }}
+            </div>
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+
+      <!-- Page Content -->
+      <div class="page-body">
+        {% block content %}{% endblock %}
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Tabler JS -->
+<script src="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/js/tabler.min.js"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

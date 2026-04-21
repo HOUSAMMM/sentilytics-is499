@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% block title %}Users Management — Sentilytics{% endblock %}
+{% block page_title %}
+  <i class="ti ti-users me-2" style="color:#4361ee;"></i>Users Management
+{% endblock %}
+{% block page_subtitle %}Enable, disable, or remove user accounts{% endblock %}
+
+{% block content %}
+<div class="card border-0 shadow-sm" style="border-radius:14px; overflow:hidden;">
+  <div style="height:4px; background:linear-gradient(90deg,#4361ee,#7209b7);"></div>
+
+  <div class="card-header border-0">
+    <div class="d-flex align-items-center justify-content-between">
+      <div class="d-flex align-items-center gap-2">
+        <div class="rounded p-2" style="background:rgba(67,97,238,0.1);">
+          <i class="ti ti-users" style="color:#4361ee;"></i>
+        </div>
+        <h3 class="card-title mb-0 fw-bold">All Users</h3>
+      </div>
+      <span class="badge rounded-pill px-3 py-2" style="background:rgba(67,97,238,0.1); color:#4361ee;">
+        {{ users|length }} total
+      </span>
+    </div>
+  </div>
+
+  <div class="table-responsive">
+    <table class="table table-vcenter card-table mb-0">
+      <thead>
+        <tr>
+          <th style="width:50px;">ID</th>
+          <th>User</th>
+          <th>Role</th>
+          <th>Status</th>
+          <th>Joined</th>
+          <th class="text-end">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for u in users %}
+        <tr>
+          <td class="text-secondary fw-semibold">{{ u.id }}</td>
+          <td>
+            <div class="d-flex align-items-center gap-3">
+              <span class="avatar avatar-sm rounded-circle fw-bold text-white"
+                    style="background:linear-gradient(135deg,#4361ee,#7209b7); font-size:0.75rem;">
+                {{ u.name[0].upper() }}
+              </span>
+              <div>
+                <div class="fw-semibold text-dark">{{ u.name }}</div>
+                <div class="text-secondary small">{{ u.email }}</div>
+              </div>
+            </div>
+          </td>
+          <td>
+            {% if u.is_moderator %}
+              <span class="badge px-3 py-2" style="background:rgba(114,9,183,0.1); color:#7209b7; border-radius:20px;">
+                <i class="ti ti-shield-check me-1"></i>Moderator
+              </span>
+            {% else %}
+              <span class="badge px-3 py-2" style="background:rgba(100,116,139,0.1); color:#64748b; border-radius:20px;">
+                <i class="ti ti-user me-1"></i>User
+              </span>
+            {% endif %}
+          </td>
+          <td>
+            {% if u.is_active %}
+              <span class="badge px-3 py-2" style="background:rgba(16,185,129,0.1); color:#10b981; border-radius:20px;">
+                <i class="ti ti-circle-check me-1"></i>Active
+              </span>
+            {% else %}
+              <span class="badge px-3 py-2" style="background:rgba(239,68,68,0.1); color:#ef4444; border-radius:20px;">
+                <i class="ti ti-ban me-1"></i>Disabled
+              </span>
+            {% endif %}
+          </td>
+          <td class="text-secondary small">{{ u.created_at.strftime("%b %d, %Y") }}</td>
+          <td class="text-end">
+            <div class="d-inline-flex gap-2">
+              <form method="POST" action="{{ url_for('moderator_toggle_user', user_id=u.id) }}">
+                <button class="btn btn-sm fw-semibold {{ 'btn-toggle-disable' if u.is_active else 'btn-toggle-enable' }}"
+                  type="submit" {% if u.id == session['user_id'] %}disabled{% endif %}>
+                  {% if u.is_active %}
+                    <i class="ti ti-lock me-1"></i>Disable
+                  {% else %}
+                    <i class="ti ti-lock-open me-1"></i>Enable
+                  {% endif %}
+                </button>
+              </form>
+
+              <form method="POST" action="{{ url_for('moderator_delete_user', user_id=u.id) }}"
+                    onsubmit="return confirm('Are you sure you want to permanently delete {{ u.name }}?');">
+                <button class="btn btn-sm fw-semibold btn-delete-user" type="submit"
+                  {% if u.id == session['user_id'] %}disabled{% endif %}>
+                  <i class="ti ti-trash me-1"></i>Delete
+                </button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

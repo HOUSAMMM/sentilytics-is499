@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+{% block title %}System Logs — Sentilytics{% endblock %}
+{% block page_title %}
+  <i class="ti ti-activity me-2" style="color:#4361ee;"></i>System Logs
+{% endblock %}
+{% block page_subtitle %}Real-time activity log — last 200 events{% endblock %}
+
+{% block content %}
+<div class="card border-0 shadow-sm" style="border-radius:14px; overflow:hidden;">
+  <div style="height:4px; background:linear-gradient(90deg,#4361ee,#7209b7);"></div>
+
+  <div class="card-header border-0">
+    <div class="d-flex align-items-center justify-content-between">
+      <div class="d-flex align-items-center gap-2">
+        <div class="rounded p-2" style="background:rgba(67,97,238,0.1);">
+          <i class="ti ti-list-details" style="color:#4361ee;"></i>
+        </div>
+        <h3 class="card-title mb-0 fw-bold">Activity Log</h3>
+      </div>
+      {% if logs %}
+      <span class="badge rounded-pill px-3 py-2" style="background:rgba(67,97,238,0.1); color:#4361ee;">
+        {{ logs|length }} events
+      </span>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="table-responsive">
+    <table class="table table-vcenter card-table mb-0">
+      <thead>
+        <tr>
+          <th style="width:150px;">Time</th>
+          <th style="width:130px;">Action</th>
+          <th>User</th>
+          <th>Detail</th>
+          <th style="width:120px;">IP Address</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% if logs and logs|length > 0 %}
+        {% for log, user in logs %}
+        <tr>
+          <td class="text-secondary small" style="white-space:nowrap;">
+            {{ log.created_at.strftime("%b %d, %Y") }}<br>
+            <span style="font-size:0.75rem;">{{ log.created_at.strftime("%H:%M:%S") }}</span>
+          </td>
+          <td>
+            {% set action_colors = {
+              'LOGIN':              ('#10b981', '#d1fae5'),
+              'LOGOUT':             ('#64748b', '#f1f5f9'),
+              'REGISTER':           ('#4361ee', '#eef2ff'),
+              'SEARCH':             ('#7209b7', '#f5f3ff'),
+              'FEEDBACK':           ('#f59e0b', '#fef9c3'),
+              'ACCOUNT_EDIT':       ('#4361ee', '#eef2ff'),
+              'PASSWORD_CHANGE':    ('#4361ee', '#eef2ff'),
+              'ACCOUNT_DELETE':     ('#ef4444', '#fee2e2'),
+              'MOD_TOGGLE_USER':    ('#f59e0b', '#fef9c3'),
+              'MOD_DELETE_USER':    ('#ef4444', '#fee2e2'),
+              'MOD_REVIEW_FEEDBACK':('#10b981', '#d1fae5'),
+            } %}
+            {% set color = action_colors.get(log.action, ('#64748b', '#f1f5f9')) %}
+            <span class="badge px-2 py-1"
+                  style="background:{{ color[1] }}; color:{{ color[0] }}; border-radius:6px; font-size:0.72rem; white-space:nowrap;">
+              {{ log.action }}
+            </span>
+          </td>
+          <td>
+            {% if user %}
+            <div class="d-flex align-items-center gap-2">
+              <span class="avatar avatar-sm rounded-circle fw-bold text-white"
+                    style="background:linear-gradient(135deg,#4361ee,#7209b7); font-size:0.72rem; min-width:28px; height:28px;">
+                {{ user.name[0].upper() }}
+              </span>
+              <div>
+                <div class="fw-semibold small">{{ user.name }}</div>
+                <div class="text-secondary" style="font-size:0.72rem;">{{ user.email }}</div>
+              </div>
+            </div>
+            {% else %}
+              <span class="text-secondary small">—</span>
+            {% endif %}
+          </td>
+          <td>
+            <span class="text-dark" style="font-size:0.85rem;">
+              {{ log.detail or "—" }}
+            </span>
+          </td>
+          <td>
+            <span class="text-secondary small" style="font-family:monospace;">
+              {{ log.ip_address or "—" }}
+            </span>
+          </td>
+        </tr>
+        {% endfor %}
+      {% else %}
+        <tr>
+          <td colspan="5" class="text-center py-5">
+            <i class="ti ti-activity-off" style="font-size:2.5rem; color:#cbd5e1;"></i>
+            <p class="text-secondary mt-2 mb-0">No activity logged yet.</p>
+          </td>
+        </tr>
+      {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
