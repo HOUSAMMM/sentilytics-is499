@@ -65,9 +65,25 @@
               <span class="input-group-text bg-light border-end-0">
                 <i class="ti ti-lock text-secondary"></i>
               </span>
-              <input name="password" type="password" class="form-control border-start-0 ps-0"
-                     placeholder="••••••••" required autocomplete="new-password">
+              <input id="passwordInput" name="password" type="password" class="form-control border-start-0 ps-0"
+                     placeholder="••••••••" required autocomplete="new-password" minlength="8">
             </div>
+
+            <!-- Strength bar -->
+            <div class="mt-2">
+              <div class="progress" style="height:6px; border-radius:4px;">
+                <div id="strengthBar" class="progress-bar" style="width:0%; transition:all 0.3s;"></div>
+              </div>
+              <small id="strengthText" class="text-secondary mt-1 d-block"></small>
+            </div>
+
+            <!-- Requirements -->
+            <ul class="mt-2 mb-0 ps-3" style="font-size:0.78rem; color:#64748b;">
+              <li id="req-len">At least 8 characters</li>
+              <li id="req-upper">At least one uppercase letter</li>
+              <li id="req-num">At least one number</li>
+              <li id="req-special">At least one special character (!@#$...)</li>
+            </ul>
           </div>
 
           <button type="submit" class="btn btn-primary w-100 py-2 fw-semibold" style="border-radius:8px;">
@@ -86,4 +102,43 @@
 
   </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const input    = document.getElementById('passwordInput');
+  const bar      = document.getElementById('strengthBar');
+  const text     = document.getElementById('strengthText');
+  const reqLen   = document.getElementById('req-len');
+  const reqUpper = document.getElementById('req-upper');
+  const reqNum   = document.getElementById('req-num');
+  const reqSpec  = document.getElementById('req-special');
+
+  input.addEventListener('input', function() {
+    const p = this.value;
+    const hasLen   = p.length >= 8;
+    const hasUpper = /[A-Z]/.test(p);
+    const hasNum   = /[0-9]/.test(p);
+    const hasSpec  = /[!@#$%^&*(),.?":{}|<>]/.test(p);
+
+    reqLen.style.color   = hasLen   ? '#10b981' : '#64748b';
+    reqUpper.style.color = hasUpper ? '#10b981' : '#64748b';
+    reqNum.style.color   = hasNum   ? '#10b981' : '#64748b';
+    reqSpec.style.color  = hasSpec  ? '#10b981' : '#64748b';
+
+    const score = [hasLen, hasUpper, hasNum, hasSpec].filter(Boolean).length;
+
+    if (p.length === 0) {
+      bar.style.width = '0%'; text.textContent = '';
+    } else if (score <= 1) {
+      bar.style.width = '25%'; bar.style.background = '#ef4444'; text.textContent = 'Weak';   text.style.color = '#ef4444';
+    } else if (score === 2) {
+      bar.style.width = '50%'; bar.style.background = '#f59e0b'; text.textContent = 'Fair';   text.style.color = '#f59e0b';
+    } else if (score === 3) {
+      bar.style.width = '75%'; bar.style.background = '#3b82f6'; text.textContent = 'Medium'; text.style.color = '#3b82f6';
+    } else {
+      bar.style.width = '100%'; bar.style.background = '#10b981'; text.textContent = 'Strong'; text.style.color = '#10b981';
+    }
+  });
+</script>
 {% endblock %}

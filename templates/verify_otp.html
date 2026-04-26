@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}Verify Email — Sentilytics{% endblock %}
+
+{% block page_header %}{% endblock %}
+
+{% block content %}
+<div class="min-vh-100 d-flex align-items-center justify-content-center" style="margin-top: -2rem;">
+  <div class="col-12 col-md-5 col-lg-4">
+
+    <!-- Brand header -->
+    <div class="text-center mb-4">
+      <img src="{{ url_for('static', filename='img/logo.png') }}" height="56" alt="Sentilytics" class="mb-3">
+      <h1 class="fw-bold mb-1" style="font-size:1.75rem; background: linear-gradient(135deg,#4361ee,#f72585); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;">
+        Verify Your Email
+      </h1>
+      <p class="text-secondary">We sent a 6-digit code to your email. Enter it below.</p>
+    </div>
+
+    <!-- Alerts -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="alert alert-{{ category }} d-flex align-items-center gap-2 mb-3">
+            {% if category == 'danger' %}<i class="ti ti-alert-circle fs-5"></i>
+            {% elif category == 'warning' %}<i class="ti ti-alert-triangle fs-5"></i>
+            {% else %}<i class="ti ti-info-circle fs-5"></i>{% endif %}
+            {{ message }}
+          </div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    <!-- Card -->
+    <div class="card shadow-lg border-0" style="border-radius:16px; overflow:hidden;">
+      <div style="height:4px; background: linear-gradient(135deg, #4361ee, #7209b7, #f72585);"></div>
+      <div class="card-body p-4">
+
+        <form method="post" action="{{ url_for('verify_login_otp_post' if mode == 'login' else 'verify_register_otp_post') }}">
+          <div class="mb-4">
+            <label class="form-label fw-semibold">Verification Code</label>
+            <div class="input-group input-group-lg">
+              <span class="input-group-text bg-light border-end-0">
+                <i class="ti ti-shield-check text-secondary"></i>
+              </span>
+              <input name="otp" type="text" class="form-control border-start-0 ps-0 text-center fw-bold"
+                     placeholder="000000" maxlength="6" required autofocus
+                     style="font-size:1.5rem; letter-spacing:0.4rem;">
+            </div>
+            <div class="text-secondary small mt-2 text-center">Code expires in 10 minutes</div>
+          </div>
+
+          <button type="submit" class="btn btn-primary w-100 py-2 fw-semibold" style="border-radius:8px;">
+            <i class="ti ti-check me-2"></i>Verify
+          </button>
+        </form>
+
+      </div>
+    </div>
+
+    <div class="text-center text-secondary mt-3">
+      <a href="{{ url_for('login') }}" class="fw-semibold text-decoration-none" style="color:#4361ee;">
+        Back to Login
+      </a>
+    </div>
+
+  </div>
+</div>
+{% endblock %}

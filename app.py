@@ -2,6 +2,9 @@ from datetime import datetime, timedelta
 import os
 import re
 import json
+import random
+import smtplib
+from email.mime.text import MIMEText
 
 import pandas as pd
 from flask import Flask, render_template, request, redirect, url_for, session, flash
@@ -14,10 +17,30 @@ app.secret_key = "sentilytics-secret-key-change-me"
 
 # ---------------- OpenAI ----------------
 from dotenv import load_dotenv
-load_dotenv()
+load_dotenv(override=True)
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 openai_client = OpenAI(api_key=OPENAI_API_KEY)
 
+
+# ---------------- Email OTP ----------------
+MAIL_EMAIL    = os.getenv("MAIL_EMAIL")
+MAIL_PASSWORD = os.getenv("MAIL_PASSWORD")
+
+def send_otp_email(to_email: str, otp: str):
+    msg = MIMEText(
+        f"Your Sentilytics verification code is:\n\n"
+        f"  {otp}\n\n"
+        f"This code expires in 10 minutes."
+    )
+    msg["Subject"] = "Sentilytics — Verification Code"
+    msg["From"]    = MAIL_EMAIL
+    msg["To"]      = to_email
+    with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
+        smtp.login(MAIL_EMAIL, MAIL_PASSWORD)
+        smtp.send_message(msg)
+
+def generate_otp() -> str:
+    return str(random.randint(100000, 999999))
 
 # DB
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///sentilytics.db"
@@ -41,6 +64,11 @@ class User(db.Model):
     # 🔐 Security: Rate Limiting (Account lockout)
     failed_login_attempts = db.Column(db.Integer, default=0)
     locked_until = db.Column(db.DateTime, nullable=True)
+
+    # Email OTP
+    otp_code       = db.Column(db.String(6),  nullable=True)
+    otp_expires_at = db.Column(db.DateTime,   nullable=True)
+    email_verified = db.Column(db.Boolean,    default=False)
 
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
@@ -161,7 +189,8 @@ def load_matches_from_csv(keyword: str, limit: int = 30):
     filtered = df.loc[mask].copy()
 
     total_matches = len(filtered)
-    titles = filtered["comment_body"].tolist()[:limit]
+    sample_size = min(limit, total_matches)
+    titles = filtered["comment_body"].sample(n=sample_size, random_state=None).tolist()
 
     return titles, total_matches, {"positive": 0, "neutral": 100, "negative": 0}
 
@@ -292,11 +321,21 @@ def login_post():
         flash("Your account is disabled. Please contact the moderator.", "danger")
         return redirect(url_for("login"))
 
-    session["user_id"] = user.id
-    session["user_name"] = user.name
-    session["is_moderator"] = user.is_moderator
-    log_event("LOGIN", f"User logged in: {user.email}")
-    return redirect(url_for("search"))
+    # Send OTP
+    otp = generate_otp()
+    user.otp_code       = otp
+    user.otp_expires_at = datetime.utcnow() + timedelta(minutes=10)
+    db.session.commit()
+
+    try:
+        send_otp_email(user.email, otp)
+    except Exception as e:
+        flash("Failed to send OTP email. Try again.", "danger")
+        return redirect(url_for("login"))
+
+    session["otp_user_id"] = user.id
+    flash("A verification code was sent to your email.", "info")
+    return redirect(url_for("verify_login_otp"))
 
 @app.get("/register")
 def register():
@@ -316,19 +355,116 @@ def register_post():
         flash("This email is already registered. Please login.", "warning")
         return redirect(url_for("login"))
 
+    # Password strength validation
+    if len(password) < 8:
+        flash("Password must be at least 8 characters.", "warning")
+        return redirect(url_for("register"))
+    if not re.search(r"[A-Z]", password):
+        flash("Password must contain at least one uppercase letter.", "warning")
+        return redirect(url_for("register"))
+    if not re.search(r"[0-9]", password):
+        flash("Password must contain at least one number.", "warning")
+        return redirect(url_for("register"))
+    if not re.search(r"[!@#$%^&*(),.?\":{}|<>]", password):
+        flash("Password must contain at least one special character.", "warning")
+        return redirect(url_for("register"))
+
+    otp = generate_otp()
+    session["pending_register"] = {
+        "name": name,
+        "email": email,
+        "password_hash": generate_password_hash(password),
+        "otp": otp,
+        "otp_expires_at": (datetime.utcnow() + timedelta(minutes=10)).isoformat()
+    }
+
+    try:
+        send_otp_email(email, otp)
+    except Exception:
+        flash("Failed to send OTP email. Try again.", "danger")
+        return redirect(url_for("register"))
+
+    flash("A verification code was sent to your email.", "info")
+    return redirect(url_for("verify_register_otp"))
+
+@app.get("/verify-login")
+def verify_login_otp():
+    if "otp_user_id" not in session:
+        return redirect(url_for("login"))
+    return render_template("verify_otp.html", mode="login")
+
+@app.post("/verify-login")
+def verify_login_otp_post():
+    if "otp_user_id" not in session:
+        return redirect(url_for("login"))
+
+    user = User.query.get(session["otp_user_id"])
+    if not user:
+        return redirect(url_for("login"))
+
+    entered = request.form.get("otp", "").strip()
+
+    if datetime.utcnow() > user.otp_expires_at:
+        flash("Code expired. Please login again.", "danger")
+        session.pop("otp_user_id", None)
+        return redirect(url_for("login"))
+
+    if entered != user.otp_code:
+        flash("Invalid code. Try again.", "danger")
+        return redirect(url_for("verify_login_otp"))
+
+    user.otp_code = None
+    user.otp_expires_at = None
+    db.session.commit()
+
+    session.pop("otp_user_id", None)
+    session["user_id"] = user.id
+    session["user_name"] = user.name
+    session["is_moderator"] = user.is_moderator
+    log_event("LOGIN", f"User logged in: {user.email}")
+    return redirect(url_for("search"))
+
+
+@app.get("/verify-register")
+def verify_register_otp():
+    if "pending_register" not in session:
+        return redirect(url_for("register"))
+    return render_template("verify_otp.html", mode="register")
+
+@app.post("/verify-register")
+def verify_register_otp_post():
+    pending = session.get("pending_register")
+    if not pending:
+        return redirect(url_for("register"))
+
+    entered = request.form.get("otp", "").strip()
+    expires = datetime.fromisoformat(pending["otp_expires_at"])
+
+    if datetime.utcnow() > expires:
+        session.pop("pending_register", None)
+        flash("Code expired. Please register again.", "danger")
+        return redirect(url_for("register"))
+
+    if entered != pending["otp"]:
+        flash("Invalid code. Try again.", "danger")
+        return redirect(url_for("verify_register_otp"))
+
     user = User(
-        name=name,
-        email=email,
-        password_hash=generate_password_hash(password),
+        name=pending["name"],
+        email=pending["email"],
+        password_hash=pending["password_hash"],
         is_moderator=False,
-        is_active=True
+        is_active=True,
+        email_verified=True
     )
     db.session.add(user)
     db.session.commit()
 
-    log_event("REGISTER", f"New account: {email}")
+    session.pop("pending_register", None)
+    log_event("REGISTER", f"New account: {user.email}")
     flash("Account created successfully. Please login.", "success")
     return redirect(url_for("login"))
+
 
 @app.get("/logout")
 def logout():
@@ -433,31 +569,33 @@ def dashboard(search_id):
 
     analysis = AnalysisResult.query.filter_by(search_id=search_id).first()
 
-    if analysis:
-        stats = {
-            "positive": analysis.positive,
-            "neutral": analysis.neutral,
-            "negative": analysis.negative
-        }
-        if comments:
-            _, labeled_comments = analyze_with_openai(comments)
-        else:
-            labeled_comments = []
-    else:
+    needs_analysis = not analysis or (analysis.positive == 0 and analysis.negative == 0)
+
+    if needs_analysis:
         if comments:
             stats, labeled_comments = analyze_with_openai(comments)
         else:
             stats = {"positive": 0, "neutral": 100, "negative": 0}
             labeled_comments = []
 
-        new_analysis = AnalysisResult(
-            search_id=search_id,
-            positive=stats["positive"],
-            neutral=stats["neutral"],
-            negative=stats["negative"]
-        )
-        db.session.add(new_analysis)
+        if analysis:
+            analysis.positive = stats["positive"]
+            analysis.neutral  = stats["neutral"]
+            analysis.negative = stats["negative"]
+        else:
+            db.session.add(AnalysisResult(
+                search_id=search_id,
+                positive=stats["positive"],
+                neutral=stats["neutral"],
+                negative=stats["negative"]
+            ))
         db.session.commit()
+    else:
+        stats = {"positive": analysis.positive, "neutral": analysis.neutral, "negative": analysis.negative}
+        if comments:
+            _, labeled_comments = analyze_with_openai(comments)
+        else:
+            labeled_comments = []
 
     return render_template(
         "dashboard.html",
