@@ -3,8 +3,7 @@ import os
 import re
 import json
 import random
-import smtplib
-from email.mime.text import MIMEText
+import resend
 
 import pandas as pd
 from flask import Flask, render_template, request, redirect, url_for, session, flash
@@ -23,23 +22,15 @@ openai_client = OpenAI(api_key=OPENAI_API_KEY)
 
 
 # ---------------- Email OTP ----------------
-MAIL_EMAIL    = os.getenv("MAIL_EMAIL")
-MAIL_PASSWORD = os.getenv("MAIL_PASSWORD")
+resend.api_key = os.getenv("RESEND_API_KEY")
 
 def send_otp_email(to_email: str, otp: str):
-    msg = MIMEText(
-        f"Your Sentilytics verification code is:\n\n"
-        f"  {otp}\n\n"
-        f"This code expires in 10 minutes."
-    )
-    msg["Subject"] = "Sentilytics — Verification Code"
-    msg["From"]    = MAIL_EMAIL
-    msg["To"]      = to_email
-    with smtplib.SMTP("smtp.gmail.com", 587) as smtp:
-        smtp.ehlo()
-        smtp.starttls()
-        smtp.login(MAIL_EMAIL, MAIL_PASSWORD)
-        smtp.send_message(msg)
+    resend.Emails.send({
+        "from": "Sentilytics <onboarding@resend.dev>",
+        "to": to_email,
+        "subject": "Sentilytics — Verification Code",
+        "text": f"Your Sentilytics verification code is:\n\n  {otp}\n\nThis code expires in 10 minutes."
+    })
 
 def generate_otp() -> str:
     return str(random.randint(100000, 999999))
