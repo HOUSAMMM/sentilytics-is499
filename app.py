@@ -35,7 +35,9 @@ def send_otp_email(to_email: str, otp: str):
     msg["Subject"] = "Sentilytics — Verification Code"
     msg["From"]    = MAIL_EMAIL
     msg["To"]      = to_email
-    with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
+    with smtplib.SMTP("smtp.gmail.com", 587) as smtp:
+        smtp.ehlo()
+        smtp.starttls()
         smtp.login(MAIL_EMAIL, MAIL_PASSWORD)
         smtp.send_message(msg)
 
