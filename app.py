@@ -3,7 +3,8 @@ import os
 import re
 import json
 import random
-import resend
+import smtplib
+from email.mime.text import MIMEText
 
 import pandas as pd
 from flask import Flask, render_template, request, redirect, url_for, session, flash
@@ -12,7 +13,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from openai import OpenAI
 
 app = Flask(__name__)
-app.secret_key = "sentilytics-secret-key-change-me"
+app.secret_key = os.getenv("SECRET_KEY", "sentilytics-secret-key")
 
 # ---------------- OpenAI ----------------
 from dotenv import load_dotenv
@@ -22,15 +23,21 @@ openai_client = OpenAI(api_key=OPENAI_API_KEY)
 
 
 # ---------------- Email OTP ----------------
-resend.api_key = os.getenv("RESEND_API_KEY")
+MAIL_EMAIL    = os.getenv("MAIL_EMAIL")
+MAIL_PASSWORD = os.getenv("MAIL_PASSWORD")
 
 def send_otp_email(to_email: str, otp: str):
-    resend.Emails.send({
-        "from": "Sentilytics <onboarding@resend.dev>",
-        "to": to_email,
-        "subject": "Sentilytics — Verification Code",
-        "text": f"Your Sentilytics verification code is:\n\n  {otp}\n\nThis code expires in 10 minutes."
-    })
+    msg = MIMEText(
+        f"Your Sentilytics verification code is:\n\n"
+        f"  {otp}\n\n"
+        f"This code expires in 10 minutes."
+    )
+    msg["Subject"] = "Sentilytics — Verification Code"
+    msg["From"]    = MAIL_EMAIL
+    msg["To"]      = to_email
+    with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
+        smtp.login(MAIL_EMAIL, MAIL_PASSWORD)
+        smtp.send_message(msg)
 
 def generate_otp() -> str:
     return str(random.randint(100000, 999999))
@@ -213,9 +220,10 @@ def analyze_with_openai(comments: list) -> tuple:
                         "role": "system",
                         "content": (
                             "You are a sentiment analysis expert. "
-                            "Label each comment as exactly one of: positive, neutral, or negative. "
+                            "Label each comment as exactly one of: positive, neutral, or negative, "
+                            "and provide a confidence score between 0.0 and 1.0. "
                             "Return ONLY a valid JSON object in this format: "
-                            "{\"labels\": [\"positive\", \"neutral\", \"negative\", ...]} "
+                            "{\"labels\": [{\"label\": \"positive\", \"score\": 0.92}, ...]} "
                             "The array length must equal the number of input comments."
                         )
                     },
@@ -232,15 +240,21 @@ def analyze_with_openai(comments: list) -> tuple:
             labels = result.get("labels", [])
 
             while len(labels) < len(batch):
-                labels.append("neutral")
+                labels.append({"label": "neutral", "score": 0.5})
             all_labels.extend(labels[:len(batch)])
 
-        labeled = [{"text": c, "sentiment": l} for c, l in zip(comments, all_labels)]
+        labeled = []
+        for c, l in zip(comments, all_labels):
+            if isinstance(l, dict):
+                labeled.append({"text": c, "sentiment": l.get("label", "neutral"), "score": round(l.get("score", 0.5) * 100)})
+            else:
+                labeled.append({"text": c, "sentiment": l, "score": 50})
 
         counts = {"positive": 0, "neutral": 0, "negative": 0}
         for l in all_labels:
-            if l in counts:
-                counts[l] += 1
+            lbl = l.get("label", "neutral") if isinstance(l, dict) else l
+            if lbl in counts:
+                counts[lbl] += 1
 
         total = sum(counts.values()) or 1
         pos = int(round(counts["positive"] / total * 100))
@@ -252,8 +266,7 @@ def analyze_with_openai(comments: list) -> tuple:
         stats = {"positive": pos, "neutral": neu, "negative": neg}
         return stats, labeled
 
-    except Exception as e:
-        print(f"OpenAI error: {e}")
+    except Exception:
         labeled = [{"text": c, "sentiment": "neutral"} for c in comments]
         return {"positive": 0, "neutral": 100, "negative": 0}, labeled
 
