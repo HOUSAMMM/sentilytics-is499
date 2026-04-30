@@ -7,3 +7,4 @@ pandas==3.0.0
 numpy==2.4.2
 openpyxl==3.1.5
 python-dotenv==1.0.1
+google-api-python-client==2.149.0

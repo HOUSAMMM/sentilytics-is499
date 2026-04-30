@@ -80,7 +80,7 @@
             <h3 class="card-title mb-0 fw-bold">Sentiment Breakdown</h3>
             <div class="text-secondary small d-flex align-items-center gap-1">
               <i class="ti ti-sparkles" style="color:#f59e0b;"></i>
-              Powered by GPT-4o-mini · {{ labeled_comments|length }} comments analyzed
+              YouTube + GPT-4o-mini · {{ labeled_comments|length }} comments analyzed
             </div>
           </div>
         </div>
@@ -118,7 +118,7 @@
               <i class="ti ti-messages" style="color:#4361ee;"></i>
             </div>
             <div>
-              <h3 class="card-title mb-0 fw-bold">Technology Comments</h3>
+              <h3 class="card-title mb-0 fw-bold">YouTube Comments</h3>
               <div class="text-secondary small">Showing {{ labeled_comments|length }} of {{ total_matches }} results</div>
             </div>
           </div>
@@ -178,8 +178,8 @@
         {% else %}
           <div class="text-center py-5">
             <i class="ti ti-mood-confuzed" style="font-size:2.5rem; color:#cbd5e1;"></i>
-            <p class="text-secondary mt-2 mb-0">No comments found on HackerNews</p>
-            <p class="text-secondary small">Try a different keyword</p>
+            <p class="text-secondary mt-2 mb-0">No comments found on YouTube</p>
+            <p class="text-secondary small">Try a different keyword or video link</p>
           </div>
         {% endif %}
       </div>

@@ -6,7 +6,8 @@ import random
 import smtplib
 from email.mime.text import MIMEText
 
-import pandas as pd
+from googleapiclient.discovery import build
+from sqlalchemy import text
 from flask import Flask, render_template, request, redirect, url_for, session, flash
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -15,10 +16,11 @@ from openai import OpenAI
 app = Flask(__name__)
 app.secret_key = os.getenv("SECRET_KEY", "sentilytics-secret-key")
 
-# ---------------- OpenAI ----------------
+# ---------------- OpenAI & YouTube ----------------
 from dotenv import load_dotenv
 load_dotenv(override=True)
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+OPENAI_API_KEY  = os.getenv("OPENAI_API_KEY")
+YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY")
 openai_client = OpenAI(api_key=OPENAI_API_KEY)
 
 
@@ -79,6 +81,7 @@ class Search(db.Model):
 
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, index=True)
     keyword = db.Column(db.String(200), nullable=False)
+    video_url = db.Column(db.String(500), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 
@@ -120,6 +123,12 @@ class SystemLog(db.Model):
 
 with app.app_context():
     db.create_all()
+    with db.engine.connect() as conn:
+        try:
+            conn.execute(text("ALTER TABLE searches ADD COLUMN video_url TEXT"))
+            conn.commit()
+        except Exception:
+            pass
 
 # ---------------- Helpers ----------------
 def is_logged_in():
@@ -166,33 +175,89 @@ def clean_text(s: str) -> str:
     s = re.sub(r"\s+", " ", s).strip()           # normalize spaces
     return s
 
-def load_matches_from_csv(keyword: str, limit: int = 30):
-    csv_path = os.path.join(app.root_path, "data", "dataset.csv")
-    if not os.path.exists(csv_path):
-        raise FileNotFoundError(
-            "Dataset not found. Put it here: project/data/dataset.csv"
-        )
+def extract_video_id(url: str) -> str:
+    if not url:
+        return None
+    match = re.search(r'(?:youtube\.com/watch\?v=|youtu\.be/|youtube\.com/embed/)([a-zA-Z0-9_-]{11})', url)
+    return match.group(1) if match else None
 
-    df = pd.read_csv(csv_path)
 
-    if "comment_body" not in df.columns:
-        raise KeyError("Column 'comment_body' not found in dataset.csv.")
-
-    df["comment_body"] = df["comment_body"].astype(str).apply(clean_text)
-
-    kw = (keyword or "").strip()
-    if not kw:
+def load_comments_from_youtube(keyword: str, limit: int = 30, video_id: str = None):
+    if not keyword or not keyword.strip():
         return [], 0, {"positive": 0, "neutral": 100, "negative": 0}
 
-    pattern = r'\b' + re.escape(kw) + r'\b'
-    mask = df["comment_body"].str.contains(pattern, case=False, regex=True, na=False)
-    filtered = df.loc[mask].copy()
+    try:
+        youtube = build("youtube", "v3", developerKey=YOUTUBE_API_KEY)
+        comments = []
 
-    total_matches = len(filtered)
-    sample_size = min(limit, total_matches)
-    titles = filtered["comment_body"].sample(n=sample_size, random_state=None).tolist()
+        if video_id:
+            # Fetch top comments from the video, then filter locally by keyword
+            kw_lower = keyword.lower()
+            next_page_token = None
+            fetched = 0
 
-    return titles, total_matches, {"positive": 0, "neutral": 100, "negative": 0}
+            while len(comments) < limit and fetched < 500:
+                params = dict(
+                    part="snippet",
+                    videoId=video_id,
+                    maxResults=100,
+                    textFormat="plainText",
+                    order="relevance"
+                )
+                if next_page_token:
+                    params["pageToken"] = next_page_token
+
+                resp = youtube.commentThreads().list(**params).execute()
+                for item in resp.get("items", []):
+                    raw = item["snippet"]["topLevelComment"]["snippet"]["textDisplay"]
+                    cleaned = clean_text(raw)
+                    fetched += 1
+                    if cleaned and len(cleaned) > 10 and kw_lower in cleaned.lower():
+                        comments.append(cleaned)
+                    if len(comments) >= limit:
+                        break
+
+                next_page_token = resp.get("nextPageToken")
+                if not next_page_token:
+                    break
+        else:
+            # Search YouTube for keyword and pull comments from top videos
+            search_resp = youtube.search().list(
+                q=keyword,
+                part="id",
+                type="video",
+                maxResults=10,
+                relevanceLanguage="en"
+            ).execute()
+
+            video_ids = [item["id"]["videoId"] for item in search_resp.get("items", [])]
+
+            for vid in video_ids:
+                if len(comments) >= limit:
+                    break
+                try:
+                    resp = youtube.commentThreads().list(
+                        part="snippet",
+                        videoId=vid,
+                        maxResults=min(limit - len(comments), 100),
+                        textFormat="plainText",
+                        order="relevance"
+                    ).execute()
+                    for item in resp.get("items", []):
+                        raw = item["snippet"]["topLevelComment"]["snippet"]["textDisplay"]
+                        cleaned = clean_text(raw)
+                        if cleaned and len(cleaned) > 10:
+                            comments.append(cleaned)
+                        if len(comments) >= limit:
+                            break
+                except Exception:
+                    continue
+
+        total = len(comments)
+        return comments[:limit], total, {"positive": 0, "neutral": 100, "negative": 0}
+
+    except Exception:
+        return [], 0, {"positive": 0, "neutral": 100, "negative": 0}
 
 
 
@@ -501,13 +566,20 @@ def search_post():
         return guard
 
     keyword = request.form.get("keyword", "").strip()
+    video_url = request.form.get("video_url", "").strip()
+
     if not keyword:
         flash("Please enter a keyword.", "warning")
         return redirect(url_for("search"))
 
+    if video_url and not extract_video_id(video_url):
+        flash("Invalid YouTube URL. Please paste a valid video link.", "warning")
+        return redirect(url_for("search"))
+
     existing_search = Search.query.filter_by(
         user_id=session["user_id"],
-        keyword=keyword
+        keyword=keyword,
+        video_url=video_url or None
     ).first()
 
     if existing_search:
@@ -515,12 +587,12 @@ def search_post():
         db.session.commit()
         search_id = existing_search.id
     else:
-        s = Search(user_id=session["user_id"], keyword=keyword)
+        s = Search(user_id=session["user_id"], keyword=keyword, video_url=video_url or None)
         db.session.add(s)
         db.session.commit()
         search_id = s.id
 
-    log_event("SEARCH", f"Keyword: {keyword}")
+    log_event("SEARCH", f"Keyword: {keyword}" + (f" | Video: {video_url}" if video_url else ""))
     return redirect(url_for("dashboard", search_id=search_id))
 
 @app.get("/search/open/<int:search_id>")
@@ -570,8 +642,8 @@ def dashboard(search_id):
         flash("Search not found.", "danger")
         return redirect(url_for("search"))
 
-    # Load matching comments from CSV dataset
-    comments, total_matches, _ = load_matches_from_csv(s.keyword, limit=30)
+    video_id = extract_video_id(s.video_url) if s.video_url else None
+    comments, total_matches, _ = load_comments_from_youtube(s.keyword, limit=30, video_id=video_id)
 
     analysis = AnalysisResult.query.filter_by(search_id=search_id).first()
 
