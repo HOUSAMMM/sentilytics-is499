@@ -4,7 +4,7 @@
   <i class="ti ti-chart-donut me-2" style="color:#4361ee;"></i>Dashboard
 {% endblock %}
 {% block page_subtitle %}
-  Sentiment results for: <strong style="color:#4361ee;">"{{ keyword }}"</strong>
+  Sentiment results for: <strong style="color:#ee4343;">"{{ keyword }}"</strong>
 {% endblock %}
 
 {% block content %}
@@ -119,9 +119,14 @@
             </div>
             <div>
               <h3 class="card-title mb-0 fw-bold">YouTube Comments</h3>
-              <div class="text-secondary small">Showing {{ labeled_comments|length }} of {{ total_matches }} results</div>
+              <div class="text-secondary small" id="visibleCount">Showing {{ labeled_comments|length }} of {{ total_matches }} results</div>
             </div>
           </div>
+          <button onclick="exportToCSV()" class="btn btn-sm fw-semibold"
+            style="border-radius:20px; background:rgba(16,185,129,0.1); color:#10b981; border:1px solid rgba(16,185,129,0.3);">
+            <i class="ti ti-file-spreadsheet me-1"></i>Export Excel
+          </button>
+          <!-- Sentiment filters -->
           <div class="d-flex gap-2 flex-wrap">
             <button class="btn btn-sm filter-btn active" data-filter="all"
               style="border-radius:20px; background:rgba(67,97,238,0.15); color:#4361ee; border:1px solid rgba(67,97,238,0.3); font-weight:600;">
@@ -141,13 +146,36 @@
             </button>
           </div>
         </div>
+
+        <!-- Date filters -->
+        <div class="d-flex gap-2 flex-wrap mt-2">
+          <span class="text-secondary small me-1" style="line-height:2;">Date:</span>
+          <button class="btn btn-sm date-btn active" data-days="0"
+            style="border-radius:20px; background:rgba(114,9,183,0.12); color:#7209b7; border:1px solid rgba(114,9,183,0.3); font-weight:600; font-size:0.75rem;">
+            All Time
+          </button>
+          <button class="btn btn-sm date-btn" data-days="7"
+            style="border-radius:20px; background:#f8f9fa; color:#64748b; border:1px solid #e2e8f0; font-size:0.75rem;">
+            Last Week
+          </button>
+          <button class="btn btn-sm date-btn" data-days="30"
+            style="border-radius:20px; background:#f8f9fa; color:#64748b; border:1px solid #e2e8f0; font-size:0.75rem;">
+            Last Month
+          </button>
+          <button class="btn btn-sm date-btn" data-days="365"
+            style="border-radius:20px; background:#f8f9fa; color:#64748b; border:1px solid #e2e8f0; font-size:0.75rem;">
+            Last Year
+          </button>
+        </div>
       </div>
 
       <div class="card-body p-0" style="max-height:420px; overflow-y:auto;">
         {% if labeled_comments and labeled_comments|length > 0 %}
           {% for item in labeled_comments %}
           <div class="px-4 py-3 d-flex align-items-start gap-3 {% if not loop.last %}border-bottom{% endif %} comment-row"
-               data-sentiment="{{ item.sentiment | lower }}" style="transition: background 0.15s;">
+               data-sentiment="{{ item.sentiment | lower }}"
+               data-date="{{ item.date if item.date else '' }}"
+               style="transition: background 0.15s;">
 
             <!-- Sentiment Badge -->
             <div class="flex-shrink-0 mt-1 d-flex flex-column align-items-center gap-1">
@@ -156,23 +184,27 @@
                     style="background:rgba(16,185,129,0.12); color:#10b981; border-radius:6px; font-size:0.7rem; white-space:nowrap;">
                 <i class="ti ti-mood-happy me-1"></i>Positive
               </span>
-              <span style="font-size:0.68rem; color:#10b981; font-weight:600;">{{ item.score }}%</span>
             {% elif item.sentiment == "negative" %}
               <span class="badge px-2 py-1"
                     style="background:rgba(239,68,68,0.12); color:#ef4444; border-radius:6px; font-size:0.7rem; white-space:nowrap;">
                 <i class="ti ti-mood-sad me-1"></i>Negative
               </span>
-              <span style="font-size:0.68rem; color:#ef4444; font-weight:600;">{{ item.score }}%</span>
             {% else %}
               <span class="badge px-2 py-1"
                     style="background:rgba(245,158,11,0.12); color:#f59e0b; border-radius:6px; font-size:0.7rem; white-space:nowrap;">
                 <i class="ti ti-mood-empty me-1"></i>Neutral
               </span>
-              <span style="font-size:0.68rem; color:#f59e0b; font-weight:600;">{{ item.score }}%</span>
             {% endif %}
             </div>
 
-            <span class="text-dark" style="font-size:0.87rem; line-height:1.6;">{{ item.text }}</span>
+            <div class="flex-grow-1">
+              <span class="text-dark" style="font-size:0.87rem; line-height:1.6;">{{ item.text }}</span>
+              {% if item.date %}
+              <div class="text-secondary mt-1" style="font-size:0.72rem;">
+                <i class="ti ti-calendar me-1"></i>{{ item.date }}
+              </div>
+              {% endif %}
+            </div>
           </div>
           {% endfor %}
         {% else %}
@@ -237,25 +269,84 @@
 {% block scripts %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script>
-  // --- Sentiment Filter ---
   document.addEventListener('DOMContentLoaded', function() {
-    function applyFilter(filter) {
-      document.querySelectorAll('.filter-btn').forEach(b => {
-        b.style.fontWeight = b.dataset.filter === filter ? '700' : '';
-        b.style.opacity    = b.dataset.filter === filter ? '1'   : '0.6';
+    var activeSentiment = 'all';
+    var activeDays = 0;
+
+    function applyFilters() {
+      var now = new Date();
+      var visible = 0;
+      var rows = document.querySelectorAll('.comment-row');
+
+      rows.forEach(function(row) {
+        var sentiment = (row.getAttribute('data-sentiment') || '').trim().toLowerCase();
+        var dateStr   = (row.getAttribute('data-date') || '').trim();
+
+        var sentimentOk = (activeSentiment === 'all' || sentiment === activeSentiment);
+
+        var dateOk = true;
+        if (activeDays > 0 && dateStr) {
+          var diff = (now - new Date(dateStr)) / 86400000;
+          dateOk = (diff <= activeDays);
+        }
+
+        if (sentimentOk && dateOk) {
+          row.classList.remove('d-none');
+          visible++;
+        } else {
+          row.classList.add('d-none');
+        }
       });
-      document.querySelectorAll('.comment-row').forEach(row => {
-        const s = (row.getAttribute('data-sentiment') || '').trim().toLowerCase();
-        row.style.display = (filter === 'all' || s === filter) ? 'flex' : 'none';
-      });
+
+      var el = document.getElementById('visibleCount');
+      if (el) el.textContent = 'Showing ' + visible + ' of ' + rows.length + ' results';
     }
 
-    document.querySelectorAll('.filter-btn').forEach(btn => {
-      btn.addEventListener('click', function() { applyFilter(this.dataset.filter); });
+    document.querySelectorAll('.filter-btn').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        activeSentiment = this.getAttribute('data-filter');
+        document.querySelectorAll('.filter-btn').forEach(function(b) {
+          b.style.opacity = (b.getAttribute('data-filter') === activeSentiment) ? '1' : '0.6';
+        });
+        applyFilters();
+      });
     });
 
-    applyFilter('all');
+    document.querySelectorAll('.date-btn').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        activeDays = parseInt(this.getAttribute('data-days'));
+        document.querySelectorAll('.date-btn').forEach(function(b) {
+          b.style.opacity = (b.getAttribute('data-days') === String(activeDays)) ? '1' : '0.6';
+        });
+        applyFilters();
+      });
+    });
+
+    applyFilters();
   });
+
+  function exportToCSV() {
+    var rows = document.querySelectorAll('.comment-row');
+    var lines = ['"Text","Sentiment","Date"'];
+
+    rows.forEach(function(row) {
+      var text      = (row.querySelector('span.text-dark') || {}).textContent || '';
+      var sentiment = row.getAttribute('data-sentiment') || '';
+      var date      = row.getAttribute('data-date') || '';
+
+      text = text.trim().replace(/"/g, '""');
+      lines.push('"' + text + '","' + sentiment + '","' + date + '"');
+    });
+
+    var csv  = '﻿' + lines.join('\n');
+    var blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    var url  = URL.createObjectURL(blob);
+    var a    = document.createElement('a');
+    a.href     = url;
+    a.download = 'sentilytics_{{ keyword | replace(" ","_") }}.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  }
 
   const stats = JSON.parse('{{ stats | tojson | safe }}');
   const ctx = document.getElementById('sentChart');

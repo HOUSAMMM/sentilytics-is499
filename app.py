@@ -58,19 +58,14 @@ class User(db.Model):
     email = db.Column(db.String(200), unique=True, nullable=False, index=True)
     password_hash = db.Column(db.String(300), nullable=False)
 
-    # Moderator features
     is_moderator = db.Column(db.Boolean, default=False)
     is_active = db.Column(db.Boolean, default=True)
-    disabled_at = db.Column(db.DateTime, nullable=True)
 
-    # 🔐 Security: Rate Limiting (Account lockout)
     failed_login_attempts = db.Column(db.Integer, default=0)
     locked_until = db.Column(db.DateTime, nullable=True)
 
-    # Email OTP
     otp_code       = db.Column(db.String(6),  nullable=True)
     otp_expires_at = db.Column(db.DateTime,   nullable=True)
-    email_verified = db.Column(db.Boolean,    default=False)
 
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
@@ -182,38 +177,44 @@ def extract_video_id(url: str) -> str:
     return match.group(1) if match else None
 
 
+def is_arabic(text: str) -> bool:
+    return bool(re.search(r'[؀-ۿ]', text))
+
+def keyword_in_text(keyword: str, text: str) -> bool:
+    pattern = r'(?<![a-zA-Z0-9])' + re.escape(keyword) + r'(?![a-zA-Z0-9])'
+    return bool(re.search(pattern, text, re.IGNORECASE))
+
+
 def load_comments_from_youtube(keyword: str, limit: int = 30, video_id: str = None):
     if not keyword or not keyword.strip():
-        return [], 0, {"positive": 0, "neutral": 100, "negative": 0}
+        return [], 0
 
     try:
         youtube = build("youtube", "v3", developerKey=YOUTUBE_API_KEY)
         comments = []
 
+        def parse_item(item):
+            snip = item["snippet"]["topLevelComment"]["snippet"]
+            raw  = snip.get("textDisplay", "")
+            date = snip.get("publishedAt", "")[:10]
+            return clean_text(raw), date
+
         if video_id:
-            # Fetch top comments from the video, then filter locally by keyword
-            kw_lower = keyword.lower()
             next_page_token = None
             fetched = 0
 
             while len(comments) < limit and fetched < 500:
-                params = dict(
-                    part="snippet",
-                    videoId=video_id,
-                    maxResults=100,
-                    textFormat="plainText",
-                    order="relevance"
-                )
+                params = dict(part="snippet", videoId=video_id,
+                              maxResults=100, textFormat="plainText", order="relevance")
                 if next_page_token:
                     params["pageToken"] = next_page_token
 
                 resp = youtube.commentThreads().list(**params).execute()
                 for item in resp.get("items", []):
-                    raw = item["snippet"]["topLevelComment"]["snippet"]["textDisplay"]
-                    cleaned = clean_text(raw)
+                    text, date = parse_item(item)
                     fetched += 1
-                    if cleaned and len(cleaned) > 10 and kw_lower in cleaned.lower():
-                        comments.append(cleaned)
+                    if text and len(text) > 10 and keyword_in_text(keyword, text):
+                        comments.append({"text": text, "date": date})
                     if len(comments) >= limit:
                         break
 
@@ -221,13 +222,10 @@ def load_comments_from_youtube(keyword: str, limit: int = 30, video_id: str = No
                 if not next_page_token:
                     break
         else:
-            # Search YouTube for keyword and pull comments from top videos
+            lang = "ar" if is_arabic(keyword) else "en"
             search_resp = youtube.search().list(
-                q=keyword,
-                part="id",
-                type="video",
-                maxResults=10,
-                relevanceLanguage="en"
+                q=keyword, part="id", type="video",
+                maxResults=10, relevanceLanguage=lang
             ).execute()
 
             video_ids = [item["id"]["videoId"] for item in search_resp.get("items", [])]
@@ -237,45 +235,38 @@ def load_comments_from_youtube(keyword: str, limit: int = 30, video_id: str = No
                     break
                 try:
                     resp = youtube.commentThreads().list(
-                        part="snippet",
-                        videoId=vid,
-                        maxResults=min(limit - len(comments), 100),
-                        textFormat="plainText",
-                        order="relevance"
+                        part="snippet", videoId=vid,
+                        maxResults=100,
+                        textFormat="plainText", order="relevance"
                     ).execute()
                     for item in resp.get("items", []):
-                        raw = item["snippet"]["topLevelComment"]["snippet"]["textDisplay"]
-                        cleaned = clean_text(raw)
-                        if cleaned and len(cleaned) > 10:
-                            comments.append(cleaned)
+                        text, date = parse_item(item)
+                        if text and len(text) > 10 and keyword_in_text(keyword, text):
+                            comments.append({"text": text, "date": date})
                         if len(comments) >= limit:
                             break
                 except Exception:
                     continue
 
-        total = len(comments)
-        return comments[:limit], total, {"positive": 0, "neutral": 100, "negative": 0}
+        return comments[:limit], len(comments)
 
     except Exception:
-        return [], 0, {"positive": 0, "neutral": 100, "negative": 0}
+        return [], 0
 
 
 
 def analyze_with_openai(comments: list) -> tuple:
-    """
-    Send comments to GPT-4o-mini for per-comment sentiment labeling.
-    Returns (stats_dict, labeled_list)
-    labeled_list = [{"text": "...", "sentiment": "positive"}, ...]
-    """
     if not comments:
         return {"positive": 0, "neutral": 100, "negative": 0}, []
 
     BATCH_SIZE = 30
     all_labels = []
+    texts = [c["text"] for c in comments]
+    dates = [c.get("date", "") for c in comments]
 
     try:
-        for i in range(0, len(comments), BATCH_SIZE):
-            batch = comments[i:i + BATCH_SIZE]
+        for i in range(0, len(texts), BATCH_SIZE):
+            batch = texts[i:i + BATCH_SIZE]
             comments_text = "\n".join(f"{j+1}. {c[:300]}" for j, c in enumerate(batch))
 
             response = openai_client.chat.completions.create(
@@ -285,10 +276,9 @@ def analyze_with_openai(comments: list) -> tuple:
                         "role": "system",
                         "content": (
                             "You are a sentiment analysis expert. "
-                            "Label each comment as exactly one of: positive, neutral, or negative, "
-                            "and provide a confidence score between 0.0 and 1.0. "
+                            "Label each comment as exactly one of: positive, neutral, or negative. "
                             "Return ONLY a valid JSON object in this format: "
-                            "{\"labels\": [{\"label\": \"positive\", \"score\": 0.92}, ...]} "
+                            "{\"labels\": [\"positive\", \"neutral\", ...]} "
                             "The array length must equal the number of input comments."
                         )
                     },
@@ -305,34 +295,28 @@ def analyze_with_openai(comments: list) -> tuple:
             labels = result.get("labels", [])
 
             while len(labels) < len(batch):
-                labels.append({"label": "neutral", "score": 0.5})
+                labels.append("neutral")
             all_labels.extend(labels[:len(batch)])
 
-        labeled = []
-        for c, l in zip(comments, all_labels):
-            if isinstance(l, dict):
-                labeled.append({"text": c, "sentiment": l.get("label", "neutral"), "score": round(l.get("score", 0.5) * 100)})
-            else:
-                labeled.append({"text": c, "sentiment": l, "score": 50})
+        labeled = [{"text": t, "sentiment": l, "date": d}
+                   for t, d, l in zip(texts, dates, all_labels)]
 
         counts = {"positive": 0, "neutral": 0, "negative": 0}
         for l in all_labels:
-            lbl = l.get("label", "neutral") if isinstance(l, dict) else l
-            if lbl in counts:
-                counts[lbl] += 1
+            if l in counts:
+                counts[l] += 1
 
         total = sum(counts.values()) or 1
         pos = int(round(counts["positive"] / total * 100))
         neu = int(round(counts["neutral"]  / total * 100))
         neg = int(round(counts["negative"] / total * 100))
-        diff = 100 - (pos + neu + neg)
-        neu += diff
+        neu += 100 - (pos + neu + neg)
 
-        stats = {"positive": pos, "neutral": neu, "negative": neg}
-        return stats, labeled
+        return {"positive": pos, "neutral": neu, "negative": neg}, labeled
 
     except Exception:
-        labeled = [{"text": c, "sentiment": "neutral"} for c in comments]
+        labeled = [{"text": c["text"], "sentiment": "neutral", "date": c.get("date", "")}
+                   for c in comments]
         return {"positive": 0, "neutral": 100, "negative": 0}, labeled
 
 
@@ -400,7 +384,7 @@ def login_post():
 
     try:
         send_otp_email(user.email, otp)
-    except Exception as e:
+    except Exception:
         flash("Failed to send OTP email. Try again.", "danger")
         return redirect(url_for("login"))
 
@@ -523,10 +507,7 @@ def verify_register_otp_post():
     user = User(
         name=pending["name"],
         email=pending["email"],
-        password_hash=pending["password_hash"],
-        is_moderator=False,
-        is_active=True,
-        email_verified=True
+        password_hash=pending["password_hash"]
     )
     db.session.add(user)
     db.session.commit()
@@ -643,7 +624,7 @@ def dashboard(search_id):
         return redirect(url_for("search"))
 
     video_id = extract_video_id(s.video_url) if s.video_url else None
-    comments, total_matches, _ = load_comments_from_youtube(s.keyword, limit=30, video_id=video_id)
+    comments, total_matches = load_comments_from_youtube(s.keyword, limit=50, video_id=video_id)
 
     analysis = AnalysisResult.query.filter_by(search_id=search_id).first()
 
@@ -749,7 +730,6 @@ def moderator_toggle_user(user_id):
         return redirect(url_for("moderator_users"))
 
     u.is_active = not u.is_active
-    u.disabled_at = datetime.utcnow() if not u.is_active else None
     db.session.commit()
 
     status_str = "disabled" if not u.is_active else "enabled"
