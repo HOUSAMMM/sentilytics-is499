@@ -77,6 +77,8 @@ class Search(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, index=True)
     keyword = db.Column(db.String(200), nullable=False)
     video_url = db.Column(db.String(500), nullable=True)
+    comment_limit = db.Column(db.Integer, default=30)
+    comment_order = db.Column(db.String(20), default="newest")
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 
@@ -102,6 +104,7 @@ class AnalysisResult(db.Model):
     positive = db.Column(db.Integer, nullable=False)
     neutral = db.Column(db.Integer, nullable=False)
     negative = db.Column(db.Integer, nullable=False)
+    labeled_json = db.Column(db.Text, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 
@@ -119,11 +122,17 @@ class SystemLog(db.Model):
 with app.app_context():
     db.create_all()
     with db.engine.connect() as conn:
-        try:
-            conn.execute(text("ALTER TABLE searches ADD COLUMN video_url TEXT"))
-            conn.commit()
-        except Exception:
-            pass
+        for col_sql in [
+            "ALTER TABLE searches ADD COLUMN video_url TEXT",
+            "ALTER TABLE searches ADD COLUMN comment_limit INTEGER DEFAULT 30",
+            "ALTER TABLE searches ADD COLUMN comment_order TEXT DEFAULT 'newest'",
+            "ALTER TABLE analysis_results ADD COLUMN labeled_json TEXT",
+        ]:
+            try:
+                conn.execute(text(col_sql))
+                conn.commit()
+            except Exception:
+                pass
 
 # ---------------- Helpers ----------------
 def is_logged_in():
@@ -185,7 +194,7 @@ def keyword_in_text(keyword: str, text: str) -> bool:
     return bool(re.search(pattern, text, re.IGNORECASE))
 
 
-def load_comments_from_youtube(keyword: str, limit: int = 30, video_id: str = None):
+def load_comments_from_youtube(keyword: str, limit: int = 30, video_id: str = None, order: str = "newest"):
     if not keyword or not keyword.strip():
         return [], 0
 
@@ -199,13 +208,17 @@ def load_comments_from_youtube(keyword: str, limit: int = 30, video_id: str = No
             date = snip.get("publishedAt", "")[:10]
             return clean_text(raw), date
 
+        fetch_target = min(limit, 500)
+
+        yt_order = "time" if order == "newest" else "relevance"
+
         if video_id:
             next_page_token = None
             fetched = 0
 
-            while len(comments) < limit and fetched < 500:
+            while len(comments) < fetch_target and fetched < 500:
                 params = dict(part="snippet", videoId=video_id,
-                              maxResults=100, textFormat="plainText", order="relevance")
+                              maxResults=100, textFormat="plainText", order=yt_order)
                 if next_page_token:
                     params["pageToken"] = next_page_token
 
@@ -215,7 +228,7 @@ def load_comments_from_youtube(keyword: str, limit: int = 30, video_id: str = No
                     fetched += 1
                     if text and len(text) > 10 and keyword_in_text(keyword, text):
                         comments.append({"text": text, "date": date})
-                    if len(comments) >= limit:
+                    if len(comments) >= fetch_target:
                         break
 
                 next_page_token = resp.get("nextPageToken")
@@ -231,24 +244,27 @@ def load_comments_from_youtube(keyword: str, limit: int = 30, video_id: str = No
             video_ids = [item["id"]["videoId"] for item in search_resp.get("items", [])]
 
             for vid in video_ids:
-                if len(comments) >= limit:
+                if len(comments) >= fetch_target:
                     break
                 try:
                     resp = youtube.commentThreads().list(
                         part="snippet", videoId=vid,
                         maxResults=100,
-                        textFormat="plainText", order="relevance"
+                        textFormat="plainText", order=yt_order
                     ).execute()
                     for item in resp.get("items", []):
                         text, date = parse_item(item)
                         if text and len(text) > 10 and keyword_in_text(keyword, text):
                             comments.append({"text": text, "date": date})
-                        if len(comments) >= limit:
+                        if len(comments) >= fetch_target:
                             break
                 except Exception:
                     continue
 
-        return comments[:limit], len(comments)
+        total = len(comments)
+        comments = comments[:limit]
+
+        return comments, total
 
     except Exception:
         return [], 0
@@ -535,7 +551,7 @@ def search():
         Search.query
         .filter_by(user_id=session["user_id"])
         .order_by(Search.created_at.desc())
-        .limit(10)
+        .limit(5)
         .all()
     )
     return render_template("search.html", searches=searches)
@@ -549,18 +565,34 @@ def search_post():
     keyword = request.form.get("keyword", "").strip()
     video_url = request.form.get("video_url", "").strip()
 
+    try:
+        comment_limit = int(request.form.get("comment_limit", 30))
+    except ValueError:
+        comment_limit = 30
+    comment_limit = max(10, min(200, comment_limit))
+
+    comment_order = request.form.get("comment_order", "newest")
+    if comment_order not in ("newest", "relevant"):
+        comment_order = "newest"
+
     if not keyword:
         flash("Please enter a keyword.", "warning")
         return redirect(url_for("search"))
 
-    if video_url and not extract_video_id(video_url):
+    if not video_url:
+        flash("Please enter a YouTube video URL.", "warning")
+        return redirect(url_for("search"))
+
+    if not extract_video_id(video_url):
         flash("Invalid YouTube URL. Please paste a valid video link.", "warning")
         return redirect(url_for("search"))
 
     existing_search = Search.query.filter_by(
         user_id=session["user_id"],
         keyword=keyword,
-        video_url=video_url or None
+        video_url=video_url,
+        comment_limit=comment_limit,
+        comment_order=comment_order
     ).first()
 
     if existing_search:
@@ -568,13 +600,48 @@ def search_post():
         db.session.commit()
         search_id = existing_search.id
     else:
-        s = Search(user_id=session["user_id"], keyword=keyword, video_url=video_url or None)
+        s = Search(
+            user_id=session["user_id"],
+            keyword=keyword,
+            video_url=video_url,
+            comment_limit=comment_limit,
+            comment_order=comment_order
+        )
         db.session.add(s)
         db.session.commit()
         search_id = s.id
 
-    log_event("SEARCH", f"Keyword: {keyword}" + (f" | Video: {video_url}" if video_url else ""))
+    # Keep only last 5 searches — delete older ones
+    all_searches = (
+        Search.query
+        .filter_by(user_id=session["user_id"])
+        .order_by(Search.created_at.desc())
+        .all()
+    )
+    for old in all_searches[5:]:
+        AnalysisResult.query.filter_by(search_id=old.id).delete(synchronize_session=False)
+        Feedback.query.filter_by(search_id=old.id).delete(synchronize_session=False)
+        db.session.delete(old)
+    db.session.commit()
+
+    log_event("SEARCH", f"Keyword: {keyword} | Video: {video_url} | Limit: {comment_limit} | Order: {comment_order}")
     return redirect(url_for("dashboard", search_id=search_id))
+
+@app.post("/search/delete/<int:search_id>")
+def delete_search(search_id):
+    guard = require_login()
+    if guard:
+        return guard
+
+    s = Search.query.filter_by(id=search_id, user_id=session["user_id"]).first()
+    if s:
+        AnalysisResult.query.filter_by(search_id=s.id).delete(synchronize_session=False)
+        Feedback.query.filter_by(search_id=s.id).delete(synchronize_session=False)
+        db.session.delete(s)
+        db.session.commit()
+
+    return redirect(url_for("search"))
+
 
 @app.get("/search/open/<int:search_id>")
 def open_recent_search(search_id):
@@ -623,38 +690,39 @@ def dashboard(search_id):
         flash("Search not found.", "danger")
         return redirect(url_for("search"))
 
-    video_id = extract_video_id(s.video_url) if s.video_url else None
-    comments, total_matches = load_comments_from_youtube(s.keyword, limit=50, video_id=video_id)
-
     analysis = AnalysisResult.query.filter_by(search_id=search_id).first()
 
-    needs_analysis = not analysis or (analysis.positive == 0 and analysis.negative == 0)
+    if analysis and analysis.labeled_json:
+        stats = {"positive": analysis.positive, "neutral": analysis.neutral, "negative": analysis.negative}
+        labeled_comments = json.loads(analysis.labeled_json)
+        total_matches = len(labeled_comments)
+    else:
+        video_id = extract_video_id(s.video_url) if s.video_url else None
+        limit = s.comment_limit or 30
+        order = s.comment_order or "newest"
+        comments, total_matches = load_comments_from_youtube(s.keyword, limit=limit, video_id=video_id, order=order)
 
-    if needs_analysis:
         if comments:
             stats, labeled_comments = analyze_with_openai(comments)
         else:
             stats = {"positive": 0, "neutral": 100, "negative": 0}
             labeled_comments = []
 
+        labeled_json = json.dumps(labeled_comments, ensure_ascii=False)
         if analysis:
-            analysis.positive = stats["positive"]
-            analysis.neutral  = stats["neutral"]
-            analysis.negative = stats["negative"]
+            analysis.positive     = stats["positive"]
+            analysis.neutral      = stats["neutral"]
+            analysis.negative     = stats["negative"]
+            analysis.labeled_json = labeled_json
         else:
             db.session.add(AnalysisResult(
                 search_id=search_id,
                 positive=stats["positive"],
                 neutral=stats["neutral"],
-                negative=stats["negative"]
+                negative=stats["negative"],
+                labeled_json=labeled_json
             ))
         db.session.commit()
-    else:
-        stats = {"positive": analysis.positive, "neutral": analysis.neutral, "negative": analysis.negative}
-        if comments:
-            _, labeled_comments = analyze_with_openai(comments)
-        else:
-            labeled_comments = []
 
     return render_template(
         "dashboard.html",
@@ -729,6 +797,10 @@ def moderator_toggle_user(user_id):
         flash("You cannot disable your own account.", "warning")
         return redirect(url_for("moderator_users"))
 
+    if u.is_moderator:
+        flash("You cannot disable another moderator's account.", "warning")
+        return redirect(url_for("moderator_users"))
+
     u.is_active = not u.is_active
     db.session.commit()
 
@@ -750,6 +822,10 @@ def moderator_delete_user(user_id):
 
     if u.id == session["user_id"]:
         flash("You cannot delete your own account.", "warning")
+        return redirect(url_for("moderator_users"))
+
+    if u.is_moderator:
+        flash("You cannot delete another moderator's account.", "warning")
         return redirect(url_for("moderator_users"))
 
     Feedback.query.filter_by(user_id=u.id).delete(synchronize_session=False)
