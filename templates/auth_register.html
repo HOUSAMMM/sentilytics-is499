@@ -1,0 +1,305 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Create Account — Sentilytics</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css" rel="stylesheet">
+  <link rel="icon" href="{{ url_for('static', filename='img/logo.png') }}">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif; background: #f8fafc; color: #1e293b; }
+
+    .auth-page { display: flex; min-height: 100vh; }
+
+    .auth-left {
+      flex: 0 0 44%;
+      background: #0d1117;
+      display: flex; flex-direction: column;
+      justify-content: center; align-items: center;
+      padding: 3rem 2.5rem;
+      position: relative; overflow: hidden;
+    }
+    .blob {
+      position: absolute; border-radius: 50%; filter: blur(80px);
+      animation: blobPulse 7s ease-in-out infinite alternate;
+    }
+    .blob-1 { width:380px; height:380px; background:#7209b7; opacity:.18; top:-100px; left:-100px; }
+    .blob-2 { width:300px; height:300px; background:#4361ee; opacity:.15; bottom:-80px; right:-60px; animation-delay:2.5s; }
+    .blob-3 { width:220px; height:220px; background:#f72585; opacity:.12; top:55%; left:55%; animation-delay:5s; }
+    @keyframes blobPulse { 0%{transform:scale(1)} 100%{transform:scale(1.25)} }
+
+    .auth-left-inner { position:relative; z-index:1; text-align:center; width:100%; max-width:320px; }
+    .auth-logo { height:58px; margin-bottom:1.25rem; filter:drop-shadow(0 0 20px rgba(114,9,183,.55)); }
+    .auth-brand {
+      font-size:2.2rem; font-weight:800; letter-spacing:-.03em;
+      background:linear-gradient(135deg,#fff 40%,#c4b5fd);
+      -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
+      margin-bottom:.5rem;
+    }
+    .auth-tagline { color:rgba(255,255,255,.45); font-size:.9rem; line-height:1.65; margin-bottom:2.25rem; }
+
+    .steps-list { text-align:left; }
+    .step-item {
+      display:flex; align-items:center; gap:.875rem;
+      padding:.65rem 1rem;
+      border-radius:12px; margin-bottom:.55rem;
+      background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.07);
+      transition:background .2s, transform .2s;
+    }
+    .step-item:hover { background:rgba(255,255,255,.08); transform:translateX(4px); }
+    .step-num {
+      width:32px; height:32px; border-radius:50%;
+      background:linear-gradient(135deg,#4361ee,#7209b7);
+      color:#fff; font-size:.8rem; font-weight:700;
+      display:flex; align-items:center; justify-content:center; flex-shrink:0;
+    }
+    .step-title { color:rgba(255,255,255,.88); font-size:.86rem; font-weight:600; }
+    .step-sub   { color:rgba(255,255,255,.38); font-size:.73rem; margin-top:1px; }
+
+    .auth-right {
+      flex:1; display:flex; align-items:center; justify-content:center;
+      padding:2rem 2rem; background:#f8fafc;
+    }
+    .auth-box { width:100%; max-width:420px; }
+
+    .auth-heading { margin-bottom:1.5rem; }
+    .auth-title { font-size:1.85rem; font-weight:800; color:#0f172a; letter-spacing:-.025em; margin-bottom:.3rem; }
+    .auth-sub   { color:#64748b; font-size:.92rem; }
+
+    .form-card {
+      background:#fff; border-radius:20px; padding:1.875rem;
+      box-shadow:0 4px 32px rgba(0,0,0,.07), 0 0 0 1px rgba(0,0,0,.04);
+    }
+
+    .field { margin-bottom:1.1rem; }
+    .field-last { margin-bottom:0; }
+    .field-label { display:block; font-size:.82rem; font-weight:600; color:#374151; margin-bottom:.4rem; }
+
+    .input-wrap { position:relative; }
+    .input-icon { position:absolute; left:.85rem; top:50%; transform:translateY(-50%); color:#94a3b8; font-size:1rem; pointer-events:none; }
+    .toggle-pw  { position:absolute; right:.85rem; top:50%; transform:translateY(-50%); color:#94a3b8; font-size:1rem; cursor:pointer; border:none; background:none; padding:0; transition:color .15s; }
+    .toggle-pw:hover { color:#4361ee; }
+
+    .field-input {
+      width:100%; padding:.72rem .875rem .72rem 2.5rem;
+      border:1.5px solid #e2e8f0; border-radius:10px;
+      font-size:.9rem; color:#1e293b; background:#f8fafc;
+      transition:border-color .2s, box-shadow .2s, background .2s;
+      outline:none; font-family:inherit;
+    }
+    .field-input:focus { border-color:#4361ee; background:#fff; box-shadow:0 0 0 3px rgba(67,97,238,.12); }
+    .field-input::placeholder { color:#c4cdd6; }
+    .field-input.has-toggle { padding-right:2.6rem; }
+
+    /* Strength bar */
+    .strength-wrap { margin-top:.5rem; }
+    .strength-bar-bg {
+      height:5px; border-radius:4px; background:#f1f5f9; overflow:hidden; margin-bottom:.3rem;
+    }
+    .strength-bar-fill { height:100%; width:0%; border-radius:4px; transition:width .3s, background .3s; }
+
+    /* Requirements */
+    .req-list { display:flex; flex-wrap:wrap; gap:.35rem .75rem; margin-top:.45rem; }
+    .req-item { display:flex; align-items:center; gap:.3rem; font-size:.73rem; color:#94a3b8; transition:color .2s; }
+    .req-item.met { color:#10b981; }
+    .req-item i { font-size:.8rem; }
+
+    .btn-submit {
+      width:100%; padding:.82rem;
+      background:linear-gradient(135deg,#4361ee,#7209b7);
+      color:#fff; border:none; border-radius:12px;
+      font-size:.935rem; font-weight:700; cursor:pointer;
+      margin-top:1.5rem;
+      display:flex; align-items:center; justify-content:center; gap:.5rem;
+      box-shadow:0 4px 16px rgba(67,97,238,.38);
+      transition:transform .15s, box-shadow .15s;
+      font-family:inherit; letter-spacing:.01em;
+    }
+    .btn-submit:hover { transform:translateY(-1px); box-shadow:0 8px 24px rgba(67,97,238,.45); }
+    .btn-submit:active { transform:translateY(0); }
+
+    .auth-switch { text-align:center; margin-top:1.4rem; color:#64748b; font-size:.875rem; }
+    .auth-switch a { color:#4361ee; font-weight:600; text-decoration:none; }
+    .auth-switch a:hover { text-decoration:underline; }
+
+    .flash-msg {
+      border-radius:10px; padding:.7rem .9rem; margin-bottom:1rem;
+      font-size:.855rem; display:flex; align-items:center; gap:.5rem; font-weight:500;
+    }
+    .flash-danger  { background:#fef2f2; color:#dc2626; border:1px solid #fecaca; }
+    .flash-warning { background:#fffbeb; color:#d97706; border:1px solid #fde68a; }
+    .flash-success { background:#f0fdf4; color:#16a34a; border:1px solid #bbf7d0; }
+    .flash-info    { background:#eff6ff; color:#2563eb; border:1px solid #bfdbfe; }
+
+    @media (max-width:768px) {
+      .auth-left { display:none; }
+      .auth-right { background:#fff; padding:1.5rem; }
+    }
+  </style>
+</head>
+<body>
+<div class="auth-page">
+
+  <!-- Left Panel -->
+  <div class="auth-left">
+    <div class="blob blob-1"></div>
+    <div class="blob blob-2"></div>
+    <div class="blob blob-3"></div>
+
+    <div class="auth-left-inner">
+      <img src="{{ url_for('static', filename='img/logo.png') }}" alt="Sentilytics" class="auth-logo">
+      <div class="auth-brand">Get Started</div>
+      <p class="auth-tagline">Join Sentilytics and start analyzing<br>YouTube sentiment in seconds</p>
+
+      <div class="steps-list">
+        <div class="step-item">
+          <div class="step-num">1</div>
+          <div>
+            <div class="step-title">Create your account</div>
+            <div class="step-sub">Takes less than a minute</div>
+          </div>
+        </div>
+        <div class="step-item">
+          <div class="step-num">2</div>
+          <div>
+            <div class="step-title">Verify your email</div>
+            <div class="step-sub">We'll send a quick OTP code</div>
+          </div>
+        </div>
+        <div class="step-item">
+          <div class="step-num">3</div>
+          <div>
+            <div class="step-title">Start analyzing</div>
+            <div class="step-sub">Paste a YouTube URL &amp; go</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right Panel -->
+  <div class="auth-right">
+    <div class="auth-box">
+
+      <div class="auth-heading">
+        <h1 class="auth-title">Create your account</h1>
+        <p class="auth-sub">Free forever — no credit card required</p>
+      </div>
+
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          {% for category, message in messages %}
+            <div class="flash-msg flash-{{ category }}">
+              {% if category == 'danger' %}<i class="ti ti-alert-circle"></i>
+              {% elif category == 'warning' %}<i class="ti ti-alert-triangle"></i>
+              {% elif category == 'success' %}<i class="ti ti-circle-check"></i>
+              {% else %}<i class="ti ti-info-circle"></i>{% endif %}
+              {{ message }}
+            </div>
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+
+      <div class="form-card">
+        <form method="post" action="{{ url_for('register_post') }}">
+
+          <div class="field">
+            <label class="field-label">Full Name</label>
+            <div class="input-wrap">
+              <i class="ti ti-user input-icon"></i>
+              <input name="name" type="text" class="field-input"
+                     placeholder="John Doe" required autocomplete="name">
+            </div>
+          </div>
+
+          <div class="field">
+            <label class="field-label">Email address</label>
+            <div class="input-wrap">
+              <i class="ti ti-mail input-icon"></i>
+              <input name="email" type="email" class="field-input"
+                     placeholder="you@example.com" required autocomplete="email">
+            </div>
+          </div>
+
+          <div class="field field-last">
+            <label class="field-label">Password</label>
+            <div class="input-wrap">
+              <i class="ti ti-lock input-icon"></i>
+              <input id="regPw" name="password" type="password" class="field-input has-toggle"
+                     placeholder="Min. 8 characters" required autocomplete="new-password" minlength="8">
+              <button type="button" class="toggle-pw" onclick="togglePw('regPw',this)">
+                <i class="ti ti-eye"></i>
+              </button>
+            </div>
+
+            <div class="strength-wrap">
+              <div class="strength-bar-bg">
+                <div id="strengthFill" class="strength-bar-fill"></div>
+              </div>
+              <div class="req-list">
+                <span class="req-item" id="req-len"><i class="ti ti-circle"></i>8+ chars</span>
+                <span class="req-item" id="req-upper"><i class="ti ti-circle"></i>Uppercase</span>
+                <span class="req-item" id="req-num"><i class="ti ti-circle"></i>Number</span>
+                <span class="req-item" id="req-spec"><i class="ti ti-circle"></i>Symbol</span>
+              </div>
+            </div>
+          </div>
+
+          <button type="submit" class="btn-submit">
+            <i class="ti ti-user-plus"></i> Create Account
+          </button>
+        </form>
+      </div>
+
+      <div class="auth-switch">
+        Already have an account? <a href="{{ url_for('login') }}">Sign in</a>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+  function togglePw(id, btn) {
+    const inp = document.getElementById(id);
+    const show = inp.type === 'text';
+    inp.type = show ? 'password' : 'text';
+    btn.querySelector('i').className = show ? 'ti ti-eye' : 'ti ti-eye-off';
+  }
+
+  const pw    = document.getElementById('regPw');
+  const fill  = document.getElementById('strengthFill');
+  const reqs  = {
+    len:   document.getElementById('req-len'),
+    upper: document.getElementById('req-upper'),
+    num:   document.getElementById('req-num'),
+    spec:  document.getElementById('req-spec')
+  };
+
+  const colors = ['#ef4444','#f59e0b','#3b82f6','#10b981'];
+  const labels = ['Weak','Fair','Good','Strong'];
+
+  pw.addEventListener('input', function() {
+    const v = this.value;
+    const checks = {
+      len:   v.length >= 8,
+      upper: /[A-Z]/.test(v),
+      num:   /[0-9]/.test(v),
+      spec:  /[!@#$%^&*(),.?":{}|<>]/.test(v)
+    };
+
+    let score = Object.values(checks).filter(Boolean).length;
+
+    Object.keys(checks).forEach(k => {
+      reqs[k].classList.toggle('met', checks[k]);
+      reqs[k].querySelector('i').className = checks[k] ? 'ti ti-circle-check' : 'ti ti-circle';
+    });
+
+    if (!v) { fill.style.width = '0%'; return; }
+    fill.style.width  = (score * 25) + '%';
+    fill.style.background = colors[score - 1] || colors[0];
+  });
+</script>
+</body>
+</html>

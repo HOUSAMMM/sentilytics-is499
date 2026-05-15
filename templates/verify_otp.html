@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Verify Email — Sentilytics</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css" rel="stylesheet">
+  <link rel="icon" href="{{ url_for('static', filename='img/logo.png') }}">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
+      min-height: 100vh;
+      background: #0d1117;
+      display: flex; align-items: center; justify-content: center;
+      padding: 2rem;
+      position: relative; overflow: hidden;
+    }
+
+    .blob {
+      position: fixed; border-radius: 50%; filter: blur(90px);
+      animation: blobPulse 7s ease-in-out infinite alternate;
+    }
+    .blob-1 { width:400px; height:400px; background:#4361ee; opacity:.15; top:-120px; left:-120px; }
+    .blob-2 { width:320px; height:320px; background:#7209b7; opacity:.12; bottom:-80px; right:-80px; animation-delay:3s; }
+    .blob-3 { width:250px; height:250px; background:#f72585; opacity:.08; top:50%; left:50%; animation-delay:1.5s; }
+    @keyframes blobPulse { 0%{transform:scale(1)} 100%{transform:scale(1.2)} }
+
+    .otp-card {
+      position: relative; z-index: 1;
+      width: 100%; max-width: 420px;
+      background: #fff;
+      border-radius: 24px;
+      padding: 2.5rem 2rem;
+      box-shadow: 0 24px 80px rgba(0,0,0,.4);
+      text-align: center;
+    }
+
+    .otp-icon-wrap {
+      width: 72px; height: 72px; border-radius: 50%;
+      background: linear-gradient(135deg, #4361ee, #7209b7);
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 1.5rem;
+      box-shadow: 0 8px 24px rgba(67,97,238,.4);
+      font-size: 1.75rem; color: #fff;
+    }
+
+    .otp-title { font-size: 1.6rem; font-weight: 800; color: #0f172a; letter-spacing: -.025em; margin-bottom: .4rem; }
+    .otp-sub   { color: #64748b; font-size: .9rem; line-height: 1.6; margin-bottom: 2rem; }
+
+    /* OTP digit boxes */
+    .otp-inputs {
+      display: flex; gap: .6rem; justify-content: center; margin-bottom: 1.75rem;
+    }
+    .otp-digit {
+      width: 52px; height: 60px;
+      border: 2px solid #e2e8f0; border-radius: 12px;
+      font-size: 1.5rem; font-weight: 700; color: #0f172a;
+      text-align: center; background: #f8fafc;
+      transition: border-color .2s, box-shadow .2s, background .2s;
+      outline: none; font-family: inherit; caret-color: #4361ee;
+    }
+    .otp-digit:focus { border-color: #4361ee; background: #fff; box-shadow: 0 0 0 3px rgba(67,97,238,.15); }
+    .otp-digit.filled { border-color: #4361ee; background: #fff; }
+
+    /* Hidden real input */
+    .otp-hidden { display: none; }
+
+    .btn-verify {
+      width: 100%; padding: .85rem;
+      background: linear-gradient(135deg, #4361ee, #7209b7);
+      color: #fff; border: none; border-radius: 12px;
+      font-size: .935rem; font-weight: 700; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; gap: .5rem;
+      box-shadow: 0 4px 16px rgba(67,97,238,.38);
+      transition: transform .15s, box-shadow .15s;
+      font-family: inherit;
+    }
+    .btn-verify:hover { transform: translateY(-1px); box-shadow: 0 8px 24px rgba(67,97,238,.45); }
+    .btn-verify:active { transform: translateY(0); }
+
+    .otp-timer {
+      margin-top: 1.25rem;
+      font-size: .83rem; color: #94a3b8;
+      display: flex; align-items: center; justify-content: center; gap: .35rem;
+    }
+    .otp-timer span { font-weight: 600; color: #4361ee; }
+
+    .otp-back {
+      display: block; margin-top: 1rem;
+      color: #64748b; font-size: .875rem; text-decoration: none;
+      transition: color .15s;
+    }
+    .otp-back:hover { color: #4361ee; }
+
+    .flash-msg {
+      border-radius: 10px; padding: .65rem .875rem; margin-bottom: 1.25rem;
+      font-size: .845rem; display: flex; align-items: center; gap: .5rem; font-weight: 500;
+      text-align: left;
+    }
+    .flash-danger  { background:#fef2f2; color:#dc2626; border:1px solid #fecaca; }
+    .flash-warning { background:#fffbeb; color:#d97706; border:1px solid #fde68a; }
+    .flash-success { background:#f0fdf4; color:#16a34a; border:1px solid #bbf7d0; }
+    .flash-info    { background:#eff6ff; color:#2563eb; border:1px solid #bfdbfe; }
+  </style>
+</head>
+<body>
+  <div class="blob blob-1"></div>
+  <div class="blob blob-2"></div>
+  <div class="blob blob-3"></div>
+
+  <div class="otp-card">
+    <div class="otp-icon-wrap">
+      <i class="ti ti-shield-check"></i>
+    </div>
+
+    <h1 class="otp-title">Check your email</h1>
+    <p class="otp-sub">We sent a 6-digit verification code to your inbox.<br>Enter it below to continue.</p>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="flash-msg flash-{{ category }}">
+            {% if category == 'danger' %}<i class="ti ti-alert-circle"></i>
+            {% elif category == 'warning' %}<i class="ti ti-alert-triangle"></i>
+            {% elif category == 'success' %}<i class="ti ti-circle-check"></i>
+            {% else %}<i class="ti ti-info-circle"></i>{% endif %}
+            {{ message }}
+          </div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    <form method="post" action="{{ url_for('verify_login_otp_post' if mode == 'login' else 'verify_register_otp_post') }}" id="otpForm">
+      <div class="otp-inputs" id="otpBoxes">
+        <input type="text" class="otp-digit" maxlength="1" inputmode="numeric" pattern="[0-9]">
+        <input type="text" class="otp-digit" maxlength="1" inputmode="numeric" pattern="[0-9]">
+        <input type="text" class="otp-digit" maxlength="1" inputmode="numeric" pattern="[0-9]">
+        <input type="text" class="otp-digit" maxlength="1" inputmode="numeric" pattern="[0-9]">
+        <input type="text" class="otp-digit" maxlength="1" inputmode="numeric" pattern="[0-9]">
+        <input type="text" class="otp-digit" maxlength="1" inputmode="numeric" pattern="[0-9]">
+      </div>
+      <input type="hidden" name="otp" id="otpValue">
+
+      <button type="submit" class="btn-verify" id="verifyBtn" disabled>
+        <i class="ti ti-check"></i> Verify &amp; Continue
+      </button>
+    </form>
+
+    <div class="otp-timer">
+      <i class="ti ti-clock"></i> Code expires in <span id="countdown">10:00</span>
+    </div>
+
+    <a href="{{ url_for('login') }}" class="otp-back">
+      <i class="ti ti-arrow-left" style="font-size:.8rem;"></i> Back to Login
+    </a>
+  </div>
+
+<script>
+  const digits  = document.querySelectorAll('.otp-digit');
+  const hidden  = document.getElementById('otpValue');
+  const btn     = document.getElementById('verifyBtn');
+  const form    = document.getElementById('otpForm');
+
+  function syncValue() {
+    const val = Array.from(digits).map(d => d.value).join('');
+    hidden.value = val;
+    const complete = val.length === 6 && /^\d{6}$/.test(val);
+    btn.disabled = !complete;
+    digits.forEach(d => d.classList.toggle('filled', d.value !== ''));
+  }
+
+  digits.forEach((d, i) => {
+    d.addEventListener('input', () => {
+      d.value = d.value.replace(/\D/g, '').slice(-1);
+      syncValue();
+      if (d.value && i < digits.length - 1) digits[i + 1].focus();
+    });
+
+    d.addEventListener('keydown', e => {
+      if (e.key === 'Backspace' && !d.value && i > 0) {
+        digits[i - 1].value = '';
+        digits[i - 1].focus();
+        syncValue();
+      }
+    });
+
+    d.addEventListener('paste', e => {
+      e.preventDefault();
+      const pasted = (e.clipboardData.getData('text') || '').replace(/\D/g, '').slice(0, 6);
+      pasted.split('').forEach((ch, j) => {
+        if (digits[j]) digits[j].value = ch;
+      });
+      syncValue();
+      const next = Math.min(pasted.length, digits.length - 1);
+      digits[next].focus();
+    });
+  });
+
+  digits[0].focus();
+
+  /* Countdown timer */
+  let secs = 600;
+  const countEl = document.getElementById('countdown');
+  const tick = setInterval(() => {
+    secs--;
+    if (secs <= 0) { clearInterval(tick); countEl.textContent = 'Expired'; countEl.style.color = '#ef4444'; return; }
+    const m = String(Math.floor(secs / 60)).padStart(2, '0');
+    const s = String(secs % 60).padStart(2, '0');
+    countEl.textContent = m + ':' + s;
+  }, 1000);
+</script>
+</body>
+</html>
