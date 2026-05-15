@@ -1,192 +1,164 @@
 {% extends "base.html" %}
 {% block title %}Search — Sentilytics{% endblock %}
-{% block page_title %}
-  <i class="ti ti-search me-2" style="color:#4361ee;"></i>Sentiment Search
-{% endblock %}
-{% block page_subtitle %}Enter a keyword to discover sentiment insights from technology discussions{% endblock %}
+{% block page_title %}Sentiment Search{% endblock %}
+{% block page_subtitle %}Enter a keyword to discover sentiment insights from YouTube comments{% endblock %}
 
 {% block content %}
-<div class="row row-cards g-4">
+<div class="row g-3">
 
-  <!-- Search Form -->
+  <!-- ── Search Form ──────────────────────────────────────────── -->
   <div class="col-12 col-lg-7">
-    <div class="card border-0 shadow-sm" style="border-radius:14px; overflow:hidden;">
-      <div style="height:4px; background: linear-gradient(90deg,#4361ee,#7209b7,#f72585);"></div>
+    <div class="card border-0" style="border-radius:16px; overflow:hidden;">
+      <div style="height:3px; background:linear-gradient(90deg,#4361ee,#7209b7,#f72585);"></div>
       <div class="card-body p-4">
-        <h3 class="fw-bold mb-1" style="color:#1e293b;">Analyze Sentiment</h3>
-        <p class="text-secondary mb-4">Search for a topic and we'll analyze the sentiment of related comments</p>
 
-        <form method="post" action="{{ url_for('search_post') }}">
+        <div class="d-flex align-items-center gap-3 mb-4">
+          <div class="rounded-3 p-2" style="background:rgba(67,97,238,.1);">
+            <i class="ti ti-chart-donut fs-4" style="color:#4361ee;"></i>
+          </div>
+          <div>
+            <h3 class="fw-bold mb-0" style="color:#1e293b; font-size:1.05rem;">Analyze Sentiment</h3>
+            <p class="text-secondary mb-0" style="font-size:.8rem;">Search a topic and we'll analyze YouTube comment sentiment via AI</p>
+          </div>
+        </div>
+
+        <form method="post" action="{{ url_for('search_post') }}" id="searchForm">
+
+          <!-- Keyword -->
           <div class="mb-3">
-            <label class="form-label fw-semibold">Keyword</label>
-            <div class="input-group input-group-lg">
-              <span class="input-group-text" style="background:#f1f5f9; border-right:none;">
-                <i class="ti ti-tag text-secondary"></i>
+            <label class="form-label fw-semibold" style="font-size:.84rem;">Keyword</label>
+            <div class="input-group">
+              <span class="input-group-text" style="background:#f8fafc; border-right:0; border-radius:10px 0 0 10px;">
+                <i class="ti ti-tag" style="color:#94a3b8;"></i>
               </span>
-              <input name="keyword" class="form-control" style="border-left:none;"
+              <input name="keyword" class="form-control" style="border-left:0; border-radius:0 10px 10px 0;"
                      placeholder="e.g. AI, iPhone, Cybersecurity, Python..." required autofocus>
+            </div>
+            <!-- Quick suggestions -->
+            <div class="mt-2 d-flex align-items-center flex-wrap gap-1">
+              <span class="text-secondary me-1" style="font-size:.75rem;">Try:</span>
+              {% for kw in ["AI", "iPhone", "Python", "Cloud", "Security"] %}
+              <button type="button" class="btn btn-sm"
+                      style="border-radius:20px; font-size:.73rem; padding:2px 10px; background:#f1f5f9; border:1px solid #e2e8f0; color:#64748b;"
+                      onclick="document.querySelector('[name=keyword]').value='{{ kw }}'">
+                {{ kw }}
+              </button>
+              {% endfor %}
             </div>
           </div>
 
-          <div class="mb-4">
-            <label class="form-label fw-semibold">
-              YouTube Video URL
-              <span class="text-danger ms-1">*</span>
+          <!-- YouTube URL -->
+          <div class="mb-3">
+            <label class="form-label fw-semibold" style="font-size:.84rem;">
+              YouTube Video URL <span class="text-danger">*</span>
             </label>
             <div class="input-group">
-              <span class="input-group-text" style="background:#f1f5f9; border-right:none;">
-                <i class="ti ti-brand-youtube text-secondary" style="color:#ef4444 !important;"></i>
+              <span class="input-group-text" style="background:#fef2f2; border-right:0; border-radius:10px 0 0 10px;">
+                <i class="ti ti-brand-youtube" style="color:#ef4444;"></i>
               </span>
-              <input name="video_url" class="form-control" style="border-left:none;"
+              <input name="video_url" class="form-control" style="border-left:0; border-radius:0 10px 10px 0;"
                      placeholder="https://www.youtube.com/watch?v=..." required>
             </div>
-            <div class="text-secondary mt-1" style="font-size:0.78rem;">
+            <div class="text-secondary mt-1" style="font-size:.74rem;">
               <i class="ti ti-info-circle me-1"></i>Paste a YouTube video link to analyze its comments
             </div>
           </div>
 
-          <!-- Comment count -->
+          <!-- Comment count slider -->
           <div class="mb-3">
-            <label class="form-label fw-semibold d-flex justify-content-between">
-              <span>Number of Comments to Analyze</span>
-              <span id="limitLabel" class="text-primary fw-bold">30</span>
+            <label class="form-label fw-semibold d-flex justify-content-between" style="font-size:.84rem;">
+              <span>Number of Comments</span>
+              <span id="limitLabel" class="fw-bold" style="color:#4361ee;">30</span>
             </label>
             <input type="range" class="form-range" name="comment_limit" id="commentLimit"
                    min="10" max="200" step="10" value="30"
                    oninput="document.getElementById('limitLabel').textContent = this.value">
-            <div class="d-flex justify-content-between text-secondary" style="font-size:0.75rem;">
+            <div class="d-flex justify-content-between text-secondary" style="font-size:.72rem;">
               <span>10</span><span>50</span><span>100</span><span>150</span><span>200</span>
             </div>
           </div>
 
           <!-- Comment order -->
           <div class="mb-4">
-            <label class="form-label fw-semibold">Comment Selection</label>
-            <div class="d-flex gap-3">
-              <label class="d-flex align-items-center gap-2 px-3 py-2 rounded-3 border cursor-pointer order-option"
-                     style="flex:1; cursor:pointer;" id="opt-newest">
+            <label class="form-label fw-semibold" style="font-size:.84rem;">Comment Selection</label>
+            <div class="d-flex gap-2">
+              <label class="order-opt flex-1" id="opt-newest" style="flex:1;">
                 <input type="radio" name="comment_order" value="newest" checked class="d-none order-radio">
-                <i class="ti ti-clock-hour4 fs-5" style="color:#4361ee;"></i>
-                <div>
-                  <div class="fw-semibold" style="font-size:0.88rem;">Newest</div>
-                  <div class="text-secondary" style="font-size:0.75rem;">Most recent comments</div>
+                <div class="order-box">
+                  <i class="ti ti-clock-hour4" style="color:#4361ee; font-size:1.1rem;"></i>
+                  <div>
+                    <div class="fw-semibold" style="font-size:.84rem;">Newest</div>
+                    <div class="text-secondary" style="font-size:.73rem;">Most recent</div>
+                  </div>
                 </div>
               </label>
-              <label class="d-flex align-items-center gap-2 px-3 py-2 rounded-3 border cursor-pointer order-option"
-                     style="flex:1; cursor:pointer;" id="opt-relevant">
+              <label class="order-opt" id="opt-relevant" style="flex:1;">
                 <input type="radio" name="comment_order" value="relevant" class="d-none order-radio">
-                <i class="ti ti-star fs-5" style="color:#7209b7;"></i>
-                <div>
-                  <div class="fw-semibold" style="font-size:0.88rem;">Most Relevant</div>
-                  <div class="text-secondary" style="font-size:0.75rem;">Top engagement comments</div>
+                <div class="order-box">
+                  <i class="ti ti-star" style="color:#7209b7; font-size:1.1rem;"></i>
+                  <div>
+                    <div class="fw-semibold" style="font-size:.84rem;">Most Relevant</div>
+                    <div class="text-secondary" style="font-size:.73rem;">Top engagement</div>
+                  </div>
                 </div>
               </label>
             </div>
           </div>
 
-          <!-- Suggested keywords -->
-          <div class="mb-4">
-            <span class="text-secondary small me-2">Try:</span>
-            {% for kw in ["AI", "iPhone", "Python", "Cloud", "Security"] %}
-            <button type="button" class="btn btn-sm btn-outline-secondary me-1 mb-1 suggestion-btn"
-                    style="border-radius:20px; font-size:0.78rem;"
-                    onclick="document.querySelector('[name=keyword]').value='{{ kw }}'">
-              {{ kw }}
-            </button>
-            {% endfor %}
-          </div>
-
-          <button type="submit" id="searchBtn" class="btn btn-primary btn-lg w-100 fw-semibold" style="border-radius:10px;">
-            <i class="ti ti-chart-donut me-2"></i>Search & Analyze
+          <button type="submit" id="searchBtn" class="btn btn-primary btn-lg w-100 fw-semibold" style="border-radius:12px;">
+            <i class="ti ti-chart-donut me-2"></i>Search &amp; Analyze
           </button>
         </form>
 
-        <!-- Loading overlay -->
-        <div id="loadingOverlay" class="d-none mt-4 text-center py-4">
-          <div class="spinner-border mb-3" style="color:#4361ee; width:3rem; height:3rem;" role="status"></div>
-          <p class="fw-semibold text-dark mb-1">Analyzing sentiment...</p>
-          <p class="text-secondary small">Fetching comments and running AI analysis. Please wait.</p>
+        <!-- Loading state -->
+        <div id="loadingOverlay" class="d-none mt-4 text-center py-3">
+          <div class="spinner-border mb-2" style="color:#4361ee; width:2.5rem; height:2.5rem;" role="status"></div>
+          <p class="fw-semibold text-dark mb-1" style="font-size:.9rem;">Analyzing sentiment...</p>
+          <p class="text-secondary" style="font-size:.8rem;">Fetching comments and running AI analysis. Please wait.</p>
         </div>
 
-        <script>
-          document.querySelector('form').addEventListener('submit', function() {
-            document.getElementById('searchBtn').disabled = true;
-            document.getElementById('searchBtn').innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Analyzing...';
-            document.getElementById('loadingOverlay').classList.remove('d-none');
-          });
-
-          // Highlight selected order option
-          function updateOrderHighlight() {
-            document.querySelectorAll('.order-option').forEach(function(el) {
-              el.style.background = '';
-              el.style.borderColor = '';
-            });
-            const checked = document.querySelector('.order-radio:checked');
-            if (checked) {
-              const parent = checked.closest('.order-option');
-              const color = checked.value === 'newest' ? '#4361ee' : '#7209b7';
-              parent.style.background = checked.value === 'newest'
-                ? 'rgba(67,97,238,0.07)' : 'rgba(114,9,183,0.07)';
-              parent.style.borderColor = checked.value === 'newest' ? '#4361ee' : '#7209b7';
-            }
-          }
-          document.querySelectorAll('.order-radio').forEach(function(r) {
-            r.addEventListener('change', updateOrderHighlight);
-          });
-          document.querySelectorAll('.order-option').forEach(function(label) {
-            label.addEventListener('click', function() {
-              const radio = this.querySelector('.order-radio');
-              radio.checked = true;
-              updateOrderHighlight();
-            });
-          });
-          updateOrderHighlight();
-        </script>
       </div>
     </div>
   </div>
 
-  <!-- Recent Searches -->
+  <!-- ── Recent Searches ─────────────────────────────────────── -->
   <div class="col-12 col-lg-5">
-    <div class="card border-0 shadow-sm h-100" style="border-radius:14px;">
-      <div class="card-header border-0 pb-0" style="background:transparent;">
+    <div class="card border-0 h-100" style="border-radius:16px;">
+      <div style="height:3px; background:linear-gradient(90deg,#7209b7,#f72585);"></div>
+      <div class="card-header border-0">
         <div class="d-flex align-items-center gap-2">
-          <div class="rounded p-2" style="background:rgba(67,97,238,0.1);">
-            <i class="ti ti-history" style="color:#4361ee;"></i>
-          </div>
-          <h3 class="card-title mb-0 fw-bold">Recent Searches</h3>
+          <span class="avatar avatar-sm rounded" style="background:rgba(114,9,183,.1);">
+            <i class="ti ti-history" style="color:#7209b7; font-size:.95rem;"></i>
+          </span>
+          <div class="card-title mb-0">Recent Searches</div>
         </div>
       </div>
 
-      <div class="card-body p-0 pt-2">
+      <div class="card-body p-0">
         {% if searches and searches|length > 0 %}
           <div class="list-group list-group-flush">
             {% for s in searches %}
-              <div class="list-group-item px-4 py-3 border-0 d-flex align-items-center gap-2"
-                   style="transition: background 0.15s;">
+              <div class="list-group-item px-3 py-2 border-0 d-flex align-items-center gap-2">
                 <a class="flex-grow-1 text-decoration-none"
                    href="{{ url_for('dashboard', search_id=s.id) }}">
                   <div class="d-flex justify-content-between align-items-center">
                     <div class="d-flex align-items-center gap-2">
-                      <span class="badge rounded-pill"
-                            style="background:rgba(67,97,238,0.1); color:#4361ee; font-size:0.7rem;">
+                      <span class="badge rounded-pill" style="background:rgba(67,97,238,.1); color:#4361ee; font-size:.68rem; padding:3px 8px;">
                         #{{ loop.index }}
                       </span>
-                      <span class="fw-semibold text-dark">{{ s.keyword }}</span>
+                      <span class="fw-semibold text-dark" style="font-size:.875rem;">{{ s.keyword }}</span>
                     </div>
-                    <div class="d-flex align-items-center gap-2">
-                      <span class="text-secondary" style="font-size:0.78rem;">
-                        {{ s.created_at.strftime("%b %d, %H:%M") }}
-                      </span>
-                      <i class="ti ti-chevron-right text-secondary" style="font-size:0.8rem;"></i>
+                    <div class="d-flex align-items-center gap-1">
+                      <span class="text-secondary" style="font-size:.72rem;">{{ s.created_at.strftime("%b %d, %H:%M") }}</span>
+                      <i class="ti ti-chevron-right text-secondary" style="font-size:.75rem;"></i>
                     </div>
                   </div>
                 </a>
                 <form method="POST" action="{{ url_for('delete_search', search_id=s.id) }}"
                       onsubmit="return confirm('Delete this search?')">
                   <button type="submit" class="btn btn-sm"
-                    style="background:rgba(239,68,68,0.08); color:#ef4444; border:1px solid rgba(239,68,68,0.2); border-radius:7px; padding:3px 8px;">
-                    <i class="ti ti-trash" style="font-size:0.85rem;"></i>
+                    style="background:rgba(239,68,68,.08); color:#ef4444; border:1px solid rgba(239,68,68,.2); border-radius:7px; padding:3px 8px;">
+                    <i class="ti ti-trash" style="font-size:.8rem;"></i>
                   </button>
                 </form>
               </div>
@@ -204,4 +176,31 @@
   </div>
 
 </div>
+
+<style>
+  .order-opt { cursor: pointer; }
+  .order-box {
+    display: flex; align-items: center; gap: .75rem;
+    padding: .65rem 1rem; border: 1.5px solid #e2e8f0;
+    border-radius: 12px; background: #f8fafc;
+    transition: all .18s;
+  }
+  .order-opt:hover .order-box { border-color: #a5b4fc; background: #f0f4ff; }
+  .order-opt.selected .order-box { background: rgba(67,97,238,.08); border-color: #4361ee; }
+  .order-opt:has(input[value="relevant"].order-radio:checked) .order-box {
+    background: rgba(114,9,183,.07); border-color: #7209b7;
+  }
+  .order-opt:has(input[value="newest"].order-radio:checked) .order-box {
+    background: rgba(67,97,238,.07); border-color: #4361ee;
+  }
+</style>
+
+<script>
+  document.querySelector('#searchForm').addEventListener('submit', function() {
+    document.getElementById('searchBtn').disabled = true;
+    document.getElementById('searchBtn').innerHTML =
+      '<span class="spinner-border spinner-border-sm me-2"></span>Analyzing...';
+    document.getElementById('loadingOverlay').classList.remove('d-none');
+  });
+</script>
 {% endblock %}

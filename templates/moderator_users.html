@@ -76,6 +76,9 @@
           <td class="text-secondary small">{{ u.created_at.strftime("%b %d, %Y") }}</td>
           <td class="text-end">
             <div class="d-inline-flex gap-2">
+              {% if u.is_moderator and u.id != session['user_id'] %}
+                <span class="text-secondary small fst-italic">Protected</span>
+              {% else %}
               <form method="POST" action="{{ url_for('moderator_toggle_user', user_id=u.id) }}">
                 <button class="btn btn-sm fw-semibold {{ 'btn-toggle-disable' if u.is_active else 'btn-toggle-enable' }}"
                   type="submit" {% if u.id == session['user_id'] %}disabled{% endif %}>
@@ -94,6 +97,7 @@
                   <i class="ti ti-trash me-1"></i>Delete
                 </button>
               </form>
+              {% endif %}
             </div>
           </td>
         </tr>

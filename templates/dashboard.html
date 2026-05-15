@@ -1,22 +1,18 @@
 {% extends "base.html" %}
 {% block title %}Dashboard — Sentilytics{% endblock %}
-{% block page_title %}
-  <i class="ti ti-chart-donut me-2" style="color:#4361ee;"></i>Dashboard
-{% endblock %}
-{% block page_subtitle %}
-  Sentiment results for: <strong style="color:#ee4343;">"{{ keyword }}"</strong>
-{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+{% block page_subtitle %}Sentiment results for "{{ keyword }}"{% endblock %}
 
 {% block content %}
-<div class="row row-cards g-4">
+<div class="row row-cards g-3">
 
-  <!-- ---- Stat Cards ---- -->
+  <!-- ── Stat Cards ──────────────────────────────────────────────────── -->
   <div class="col-6 col-md-3">
-    <div class="card border-0 shadow-sm text-center stat-card-total" style="border-radius:14px;">
+    <div class="card border-0 text-center stat-card-total" style="border-radius:14px;">
       <div class="card-body py-4">
         <div class="mb-2">
-          <span class="avatar avatar-lg rounded-circle" style="background:rgba(67,97,238,0.12);">
-            <i class="ti ti-message-circle" style="color:#4361ee; font-size:1.4rem;"></i>
+          <span class="avatar avatar-md rounded-circle" style="background:rgba(67,97,238,.12);">
+            <i class="ti ti-message-circle" style="color:#4361ee; font-size:1.2rem;"></i>
           </span>
         </div>
         <div class="h2 fw-bold mb-0" style="color:#4361ee;">{{ total_matches }}</div>
@@ -26,11 +22,11 @@
   </div>
 
   <div class="col-6 col-md-3">
-    <div class="card border-0 shadow-sm text-center stat-card-positive" style="border-radius:14px;">
+    <div class="card border-0 text-center stat-card-positive" style="border-radius:14px;">
       <div class="card-body py-4">
         <div class="mb-2">
-          <span class="avatar avatar-lg rounded-circle" style="background:rgba(16,185,129,0.12);">
-            <i class="ti ti-mood-happy" style="color:#10b981; font-size:1.4rem;"></i>
+          <span class="avatar avatar-md rounded-circle" style="background:rgba(16,185,129,.12);">
+            <i class="ti ti-mood-happy" style="color:#10b981; font-size:1.2rem;"></i>
           </span>
         </div>
         <div class="h2 fw-bold mb-0" style="color:#10b981;">{{ stats.positive }}%</div>
@@ -40,11 +36,11 @@
   </div>
 
   <div class="col-6 col-md-3">
-    <div class="card border-0 shadow-sm text-center stat-card-neutral" style="border-radius:14px;">
+    <div class="card border-0 text-center stat-card-neutral" style="border-radius:14px;">
       <div class="card-body py-4">
         <div class="mb-2">
-          <span class="avatar avatar-lg rounded-circle" style="background:rgba(245,158,11,0.12);">
-            <i class="ti ti-mood-empty" style="color:#f59e0b; font-size:1.4rem;"></i>
+          <span class="avatar avatar-md rounded-circle" style="background:rgba(245,158,11,.12);">
+            <i class="ti ti-mood-empty" style="color:#f59e0b; font-size:1.2rem;"></i>
           </span>
         </div>
         <div class="h2 fw-bold mb-0" style="color:#f59e0b;">{{ stats.neutral }}%</div>
@@ -54,11 +50,11 @@
   </div>
 
   <div class="col-6 col-md-3">
-    <div class="card border-0 shadow-sm text-center stat-card-negative" style="border-radius:14px;">
+    <div class="card border-0 text-center stat-card-negative" style="border-radius:14px;">
       <div class="card-body py-4">
         <div class="mb-2">
-          <span class="avatar avatar-lg rounded-circle" style="background:rgba(239,68,68,0.12);">
-            <i class="ti ti-mood-sad" style="color:#ef4444; font-size:1.4rem;"></i>
+          <span class="avatar avatar-md rounded-circle" style="background:rgba(239,68,68,.12);">
+            <i class="ti ti-mood-sad" style="color:#ef4444; font-size:1.2rem;"></i>
           </span>
         </div>
         <div class="h2 fw-bold mb-0" style="color:#ef4444;">{{ stats.negative }}%</div>
@@ -67,145 +63,136 @@
     </div>
   </div>
 
-  <!-- ---- Chart ---- -->
-  <div class="col-12 col-lg-5">
-    <div class="card border-0 shadow-sm h-100" style="border-radius:14px; overflow:hidden;">
-      <div style="height:4px; background:linear-gradient(90deg,#10b981,#f59e0b,#ef4444);"></div>
-      <div class="card-header border-0">
-        <div class="d-flex align-items-center gap-2">
-          <div class="rounded p-2" style="background:rgba(67,97,238,0.1);">
-            <i class="ti ti-chart-pie" style="color:#4361ee;"></i>
-          </div>
-          <div>
-            <h3 class="card-title mb-0 fw-bold">Sentiment Breakdown</h3>
-            <div class="text-secondary small d-flex align-items-center gap-1">
-              <i class="ti ti-sparkles" style="color:#f59e0b;"></i>
-              YouTube + GPT-4o-mini · {{ labeled_comments|length }} comments analyzed
-            </div>
-          </div>
+  <!-- ── Sentiment Distribution Bar ─────────────────────────────────── -->
+  <div class="col-12">
+    <div class="card border-0" style="border-radius:14px;">
+      <div class="card-body py-3 px-4">
+        <div class="d-flex align-items-center justify-content-between mb-2">
+          <span class="fw-semibold text-secondary small text-uppercase" style="letter-spacing:.06em;">Sentiment Distribution</span>
+          <span class="text-secondary small">{{ labeled_comments|length }} analyzed</span>
         </div>
-      </div>
-      <div class="card-body d-flex flex-column align-items-center justify-content-center py-4">
-        <div style="max-width:280px; width:100%;">
-          <canvas id="sentChart"></canvas>
+        <div class="d-flex rounded-3 overflow-hidden" style="height:14px;">
+          <div class="dist-pos" data-pct="{{ stats.positive }}" title="Positive {{ stats.positive }}%"></div>
+          <div class="dist-neu" data-pct="{{ stats.neutral }}"  title="Neutral {{ stats.neutral }}%"></div>
+          <div class="dist-neg" data-pct="{{ stats.negative }}" title="Negative {{ stats.negative }}%"></div>
         </div>
-        <div class="d-flex gap-3 mt-4 flex-wrap justify-content-center">
-          <span class="d-flex align-items-center gap-1">
-            <span class="badge rounded-circle p-2" style="background:#10b981;"></span>
-            <span class="fw-semibold small">Positive {{ stats.positive }}%</span>
+        <div class="d-flex gap-4 mt-2">
+          <span class="d-flex align-items-center gap-1 small">
+            <span class="rounded-circle d-inline-block" style="width:8px;height:8px;background:#10b981;"></span>
+            <span class="text-secondary">Positive {{ stats.positive }}%</span>
           </span>
-          <span class="d-flex align-items-center gap-1">
-            <span class="badge rounded-circle p-2" style="background:#f59e0b;"></span>
-            <span class="fw-semibold small">Neutral {{ stats.neutral }}%</span>
+          <span class="d-flex align-items-center gap-1 small">
+            <span class="rounded-circle d-inline-block" style="width:8px;height:8px;background:#f59e0b;"></span>
+            <span class="text-secondary">Neutral {{ stats.neutral }}%</span>
           </span>
-          <span class="d-flex align-items-center gap-1">
-            <span class="badge rounded-circle p-2" style="background:#ef4444;"></span>
-            <span class="fw-semibold small">Negative {{ stats.negative }}%</span>
+          <span class="d-flex align-items-center gap-1 small">
+            <span class="rounded-circle d-inline-block" style="width:8px;height:8px;background:#ef4444;"></span>
+            <span class="text-secondary">Negative {{ stats.negative }}%</span>
           </span>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- ---- Matched Comments ---- -->
-  <div class="col-12 col-lg-7">
-    <div class="card border-0 shadow-sm h-100" style="border-radius:14px; overflow:hidden;">
-      <div style="height:4px; background:linear-gradient(90deg,#4361ee,#7209b7);"></div>
+  <!-- ── Chart ──────────────────────────────────────────────────────── -->
+  <div class="col-12 col-lg-4">
+    <div class="card border-0 h-100" style="border-radius:14px; overflow:hidden;">
+      <div style="height:3px; background:linear-gradient(90deg,#10b981,#f59e0b,#ef4444);"></div>
       <div class="card-header border-0">
-        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+        <div class="d-flex align-items-center gap-2">
+          <span class="avatar avatar-sm rounded" style="background:rgba(67,97,238,.1);">
+            <i class="ti ti-chart-pie" style="color:#4361ee; font-size:.95rem;"></i>
+          </span>
+          <div>
+            <div class="card-title mb-0">Sentiment Breakdown</div>
+            <div class="text-secondary" style="font-size:.72rem;">YouTube + AI Analysis</div>
+          </div>
+        </div>
+      </div>
+      <div class="card-body d-flex flex-column align-items-center justify-content-center py-3">
+        <div style="max-width:220px; width:100%;">
+          <canvas id="sentChart"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Comments List ──────────────────────────────────────────────── -->
+  <div class="col-12 col-lg-8">
+    <div class="card border-0 h-100" style="border-radius:14px; overflow:hidden;">
+      <div style="height:3px; background:linear-gradient(90deg,#4361ee,#7209b7);"></div>
+      <div class="card-header border-0">
+
+        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2">
           <div class="d-flex align-items-center gap-2">
-            <div class="rounded p-2" style="background:rgba(67,97,238,0.1);">
-              <i class="ti ti-messages" style="color:#4361ee;"></i>
-            </div>
+            <span class="avatar avatar-sm rounded" style="background:rgba(67,97,238,.1);">
+              <i class="ti ti-messages" style="color:#4361ee; font-size:.95rem;"></i>
+            </span>
             <div>
-              <h3 class="card-title mb-0 fw-bold">YouTube Comments</h3>
-              <div class="text-secondary small" id="visibleCount">Showing {{ labeled_comments|length }} of {{ total_matches }} results</div>
+              <div class="card-title mb-0">YouTube Comments</div>
+              <div class="text-secondary" id="visibleCount" style="font-size:.72rem;">
+                Showing {{ labeled_comments|length }} of {{ total_matches }} results
+              </div>
             </div>
           </div>
           <button onclick="exportToCSV()" class="btn btn-sm fw-semibold"
-            style="border-radius:20px; background:rgba(16,185,129,0.1); color:#10b981; border:1px solid rgba(16,185,129,0.3);">
-            <i class="ti ti-file-spreadsheet me-1"></i>Export Excel
+            style="border-radius:20px; background:rgba(16,185,129,.1); color:#10b981; border:1px solid rgba(16,185,129,.3); font-size:.78rem;">
+            <i class="ti ti-file-spreadsheet me-1"></i>Export CSV
           </button>
-          <!-- Sentiment filters -->
-          <div class="d-flex gap-2 flex-wrap">
-            <button class="btn btn-sm filter-btn active" data-filter="all"
-              style="border-radius:20px; background:rgba(67,97,238,0.15); color:#4361ee; border:1px solid rgba(67,97,238,0.3); font-weight:600;">
-              All
-            </button>
-            <button class="btn btn-sm filter-btn" data-filter="positive"
-              style="border-radius:20px; background:rgba(16,185,129,0.08); color:#10b981; border:1px solid rgba(16,185,129,0.3);">
-              <i class="ti ti-mood-happy me-1"></i>Positive
-            </button>
-            <button class="btn btn-sm filter-btn" data-filter="neutral"
-              style="border-radius:20px; background:rgba(245,158,11,0.08); color:#f59e0b; border:1px solid rgba(245,158,11,0.3);">
-              <i class="ti ti-mood-empty me-1"></i>Neutral
-            </button>
-            <button class="btn btn-sm filter-btn" data-filter="negative"
-              style="border-radius:20px; background:rgba(239,68,68,0.08); color:#ef4444; border:1px solid rgba(239,68,68,0.3);">
-              <i class="ti ti-mood-sad me-1"></i>Negative
-            </button>
-          </div>
+        </div>
+
+        <!-- Sentiment filters -->
+        <div class="d-flex gap-2 flex-wrap mb-2" id="sentFilters">
+          <button class="filter-btn active" data-filter="all">All</button>
+          <button class="filter-btn" data-filter="positive"><i class="ti ti-mood-happy me-1"></i>Positive</button>
+          <button class="filter-btn" data-filter="neutral"><i class="ti ti-mood-empty me-1"></i>Neutral</button>
+          <button class="filter-btn" data-filter="negative"><i class="ti ti-mood-sad me-1"></i>Negative</button>
         </div>
 
         <!-- Date filters -->
-        <div class="d-flex gap-2 flex-wrap mt-2">
-          <span class="text-secondary small me-1" style="line-height:2;">Date:</span>
-          <button class="btn btn-sm date-btn active" data-days="0"
-            style="border-radius:20px; background:rgba(114,9,183,0.12); color:#7209b7; border:1px solid rgba(114,9,183,0.3); font-weight:600; font-size:0.75rem;">
-            All Time
-          </button>
-          <button class="btn btn-sm date-btn" data-days="7"
-            style="border-radius:20px; background:#f8f9fa; color:#64748b; border:1px solid #e2e8f0; font-size:0.75rem;">
-            Last Week
-          </button>
-          <button class="btn btn-sm date-btn" data-days="30"
-            style="border-radius:20px; background:#f8f9fa; color:#64748b; border:1px solid #e2e8f0; font-size:0.75rem;">
-            Last Month
-          </button>
-          <button class="btn btn-sm date-btn" data-days="365"
-            style="border-radius:20px; background:#f8f9fa; color:#64748b; border:1px solid #e2e8f0; font-size:0.75rem;">
-            Last Year
-          </button>
+        <div class="d-flex gap-2 flex-wrap align-items-center" id="dateFilters">
+          <span class="text-secondary" style="font-size:.72rem;">Date:</span>
+          <button class="date-btn active" data-days="0">All Time</button>
+          <button class="date-btn" data-days="7">Last Week</button>
+          <button class="date-btn" data-days="30">Last Month</button>
+          <button class="date-btn" data-days="365">Last Year</button>
         </div>
       </div>
 
-      <div class="card-body p-0" style="max-height:420px; overflow-y:auto;">
+      <div class="card-body p-0" style="max-height:400px; overflow-y:auto;">
         {% if labeled_comments and labeled_comments|length > 0 %}
           {% for item in labeled_comments %}
-          <div class="px-4 py-3 d-flex align-items-start gap-3 {% if not loop.last %}border-bottom{% endif %} comment-row"
+          <div class="d-flex align-items-start gap-0 comment-row {% if not loop.last %}border-bottom{% endif %}"
                data-sentiment="{{ item.sentiment | lower }}"
                data-date="{{ item.date if item.date else '' }}"
-               style="transition: background 0.15s;">
+               style="transition:background .15s;">
 
-            <!-- Sentiment Badge -->
-            <div class="flex-shrink-0 mt-1 d-flex flex-column align-items-center gap-1">
-            {% if item.sentiment == "positive" %}
-              <span class="badge px-2 py-1"
-                    style="background:rgba(16,185,129,0.12); color:#10b981; border-radius:6px; font-size:0.7rem; white-space:nowrap;">
-                <i class="ti ti-mood-happy me-1"></i>Positive
-              </span>
-            {% elif item.sentiment == "negative" %}
-              <span class="badge px-2 py-1"
-                    style="background:rgba(239,68,68,0.12); color:#ef4444; border-radius:6px; font-size:0.7rem; white-space:nowrap;">
-                <i class="ti ti-mood-sad me-1"></i>Negative
-              </span>
-            {% else %}
-              <span class="badge px-2 py-1"
-                    style="background:rgba(245,158,11,0.12); color:#f59e0b; border-radius:6px; font-size:0.7rem; white-space:nowrap;">
-                <i class="ti ti-mood-empty me-1"></i>Neutral
-              </span>
-            {% endif %}
-            </div>
+            <!-- Colored left border by sentiment -->
+            <div class="sent-border sent-border-{{ item.sentiment | lower }}"></div>
 
-            <div class="flex-grow-1">
-              <span class="text-dark" style="font-size:0.87rem; line-height:1.6;">{{ item.text }}</span>
+            <div class="px-3 py-3 flex-grow-1">
+              <div class="d-flex align-items-start justify-content-between gap-2">
+                <span class="text-dark" style="font-size:.87rem; line-height:1.65;">{{ item.text }}</span>
+                {% if item.sentiment == "positive" %}
+                  <span class="badge flex-shrink-0" style="background:rgba(16,185,129,.12); color:#10b981; border-radius:6px; font-size:.68rem; white-space:nowrap; padding:3px 7px;">
+                    <i class="ti ti-mood-happy"></i>
+                  </span>
+                {% elif item.sentiment == "negative" %}
+                  <span class="badge flex-shrink-0" style="background:rgba(239,68,68,.12); color:#ef4444; border-radius:6px; font-size:.68rem; white-space:nowrap; padding:3px 7px;">
+                    <i class="ti ti-mood-sad"></i>
+                  </span>
+                {% else %}
+                  <span class="badge flex-shrink-0" style="background:rgba(245,158,11,.12); color:#f59e0b; border-radius:6px; font-size:.68rem; white-space:nowrap; padding:3px 7px;">
+                    <i class="ti ti-mood-empty"></i>
+                  </span>
+                {% endif %}
+              </div>
               {% if item.date %}
-              <div class="text-secondary mt-1" style="font-size:0.72rem;">
+              <div class="text-secondary mt-1" style="font-size:.7rem;">
                 <i class="ti ti-calendar me-1"></i>{{ item.date }}
               </div>
               {% endif %}
             </div>
-
           </div>
           {% endfor %}
         {% else %}
@@ -219,18 +206,18 @@
     </div>
   </div>
 
-  <!-- ---- Feedback Form ---- -->
+  <!-- ── Feedback Form ──────────────────────────────────────────────── -->
   <div class="col-12">
-    <div class="card border-0 shadow-sm" style="border-radius:14px; overflow:hidden;">
-      <div style="height:4px; background:linear-gradient(90deg,#f72585,#7209b7);"></div>
+    <div class="card border-0" style="border-radius:14px; overflow:hidden;">
+      <div style="height:3px; background:linear-gradient(90deg,#f72585,#7209b7);"></div>
       <div class="card-header border-0">
         <div class="d-flex align-items-center gap-2">
-          <div class="rounded p-2" style="background:rgba(247,37,133,0.1);">
-            <i class="ti ti-star" style="color:#f72585;"></i>
-          </div>
+          <span class="avatar avatar-sm rounded" style="background:rgba(247,37,133,.1);">
+            <i class="ti ti-star" style="color:#f72585; font-size:.95rem;"></i>
+          </span>
           <div>
-            <h3 class="card-title mb-0 fw-bold">Rate These Results</h3>
-            <div class="text-secondary small">Your feedback helps us improve accuracy</div>
+            <div class="card-title mb-0">Rate These Results</div>
+            <div class="text-secondary" style="font-size:.72rem;">Your feedback helps us improve accuracy</div>
           </div>
         </div>
       </div>
@@ -238,8 +225,8 @@
         <form method="POST" action="{{ url_for('submit_feedback', search_id=search_id) }}">
           <div class="row g-3">
             <div class="col-12 col-md-4">
-              <label class="form-label fw-semibold">Accuracy Rating</label>
-              <select class="form-select" name="rating" required>
+              <label class="form-label fw-semibold" style="font-size:.84rem;">Accuracy Rating</label>
+              <select class="form-select" name="rating" required style="border-radius:10px;">
                 <option value="" selected disabled>Choose a rating...</option>
                 <option value="5">⭐⭐⭐⭐⭐ — Very accurate</option>
                 <option value="4">⭐⭐⭐⭐ — Accurate</option>
@@ -249,13 +236,13 @@
               </select>
             </div>
             <div class="col-12 col-md-8">
-              <label class="form-label fw-semibold">Your Comment</label>
+              <label class="form-label fw-semibold" style="font-size:.84rem;">Your Comment</label>
               <textarea class="form-control" name="message" rows="2" required
-                placeholder="What was good? What needs improvement?"></textarea>
+                placeholder="What was good? What needs improvement?" style="border-radius:10px;"></textarea>
             </div>
           </div>
           <div class="mt-3">
-            <button class="btn btn-primary fw-semibold px-4" type="submit" style="border-radius:8px;">
+            <button class="btn btn-primary fw-semibold px-4" type="submit" style="border-radius:10px;">
               <i class="ti ti-send me-2"></i>Submit Feedback
             </button>
           </div>
@@ -265,11 +252,44 @@
   </div>
 
 </div>
+
+<style>
+  .filter-btn, .date-btn {
+    border: none; background: none; cursor: pointer; border-radius: 20px;
+    padding: .3rem .85rem; font-size: .76rem; font-weight: 500;
+    color: #64748b; background: #f1f5f9; border: 1px solid #e2e8f0;
+    transition: all .18s; font-family: inherit;
+  }
+  .filter-btn.active {
+    background: rgba(67,97,238,.12); color: #4361ee;
+    border-color: rgba(67,97,238,.3); font-weight: 700;
+  }
+  .date-btn.active {
+    background: rgba(114,9,183,.1); color: #7209b7;
+    border-color: rgba(114,9,183,.3); font-weight: 700;
+  }
+  .filter-btn:hover, .date-btn:hover { opacity: .8; }
+  .comment-row:hover { background: #f8fafc; }
+  /* Sentiment distribution bar */
+  .dist-pos { background: #10b981; }
+  .dist-neu { background: #f59e0b; }
+  .dist-neg { background: #ef4444; }
+  /* Comment left border */
+  .sent-border { width: 3px; align-self: stretch; flex-shrink: 0; }
+  .sent-border-positive { background: #10b981; }
+  .sent-border-neutral  { background: #f59e0b; }
+  .sent-border-negative { background: #ef4444; }
+</style>
 {% endblock %}
 
 {% block scripts %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script>
+  // Set distribution bar widths from data attributes (avoids Jinja in style attrs)
+  document.querySelectorAll('[data-pct]').forEach(function(el) {
+    el.style.width = el.getAttribute('data-pct') + '%';
+  });
+
   document.addEventListener('DOMContentLoaded', function() {
     var activeSentiment = 'all';
     var activeDays = 0;
@@ -277,48 +297,35 @@
     function applyFilters() {
       var now = new Date();
       var visible = 0;
-      var rows = document.querySelectorAll('.comment-row');
-
-      rows.forEach(function(row) {
-        var sentiment = (row.getAttribute('data-sentiment') || '').trim().toLowerCase();
+      document.querySelectorAll('.comment-row').forEach(function(row) {
+        var sentiment = (row.getAttribute('data-sentiment') || '').toLowerCase();
         var dateStr   = (row.getAttribute('data-date') || '').trim();
-
-        var sentimentOk = (activeSentiment === 'all' || sentiment === activeSentiment);
-
-        var dateOk = true;
+        var sentOk    = activeSentiment === 'all' || sentiment === activeSentiment;
+        var dateOk    = true;
         if (activeDays > 0 && dateStr) {
-          var diff = (now - new Date(dateStr)) / 86400000;
-          dateOk = (diff <= activeDays);
+          dateOk = (new Date() - new Date(dateStr)) / 86400000 <= activeDays;
         }
-
-        if (sentimentOk && dateOk) {
-          row.classList.remove('d-none');
-          visible++;
-        } else {
-          row.classList.add('d-none');
-        }
+        row.classList.toggle('d-none', !(sentOk && dateOk));
+        if (sentOk && dateOk) visible++;
       });
-
       var el = document.getElementById('visibleCount');
-      if (el) el.textContent = 'Showing ' + visible + ' of ' + rows.length + ' results';
+      if (el) el.textContent = 'Showing ' + visible + ' of ' + document.querySelectorAll('.comment-row').length + ' results';
     }
 
     document.querySelectorAll('.filter-btn').forEach(function(btn) {
       btn.addEventListener('click', function() {
+        document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+        this.classList.add('active');
         activeSentiment = this.getAttribute('data-filter');
-        document.querySelectorAll('.filter-btn').forEach(function(b) {
-          b.style.opacity = (b.getAttribute('data-filter') === activeSentiment) ? '1' : '0.6';
-        });
         applyFilters();
       });
     });
 
     document.querySelectorAll('.date-btn').forEach(function(btn) {
       btn.addEventListener('click', function() {
+        document.querySelectorAll('.date-btn').forEach(b => b.classList.remove('active'));
+        this.classList.add('active');
         activeDays = parseInt(this.getAttribute('data-days'));
-        document.querySelectorAll('.date-btn').forEach(function(b) {
-          b.style.opacity = (b.getAttribute('data-days') === String(activeDays)) ? '1' : '0.6';
-        });
         applyFilters();
       });
     });
@@ -329,29 +336,22 @@
   function exportToCSV() {
     var rows = document.querySelectorAll('.comment-row');
     var lines = ['"Text","Sentiment","Date"'];
-
     rows.forEach(function(row) {
-      var text      = (row.querySelector('span.text-dark') || {}).textContent || '';
+      var text = (row.querySelector('.text-dark') || {}).textContent || '';
       var sentiment = row.getAttribute('data-sentiment') || '';
-      var date      = row.getAttribute('data-date') || '';
-
-      text = text.trim().replace(/"/g, '""');
-      lines.push('"' + text + '","' + sentiment + '","' + date + '"');
+      var date = row.getAttribute('data-date') || '';
+      lines.push('"' + text.trim().replace(/"/g, '""') + '","' + sentiment + '","' + date + '"');
     });
-
-    var csv  = '﻿' + lines.join('\n');
-    var blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    var url  = URL.createObjectURL(blob);
-    var a    = document.createElement('a');
-    a.href     = url;
+    var blob = new Blob(['﻿' + lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
     a.download = 'sentilytics_{{ keyword | replace(" ","_") }}.csv';
     a.click();
-    URL.revokeObjectURL(url);
+    URL.revokeObjectURL(a.href);
   }
 
   const stats = JSON.parse('{{ stats | tojson | safe }}');
-  const ctx = document.getElementById('sentChart');
-  new Chart(ctx, {
+  new Chart(document.getElementById('sentChart'), {
     type: 'doughnut',
     data: {
       labels: ['Positive', 'Neutral', 'Negative'],
@@ -364,13 +364,14 @@
     },
     options: {
       responsive: true,
-      cutout: '72%',
+      cutout: '74%',
       plugins: {
-        legend: { display: false },
+        legend: {
+          position: 'bottom',
+          labels: { padding: 16, font: { size: 12 }, usePointStyle: true, pointStyleWidth: 8 }
+        },
         tooltip: {
-          callbacks: {
-            label: ctx => ` ${ctx.label}: ${ctx.parsed}%`
-          }
+          callbacks: { label: ctx => ` ${ctx.label}: ${ctx.parsed}%` }
         }
       }
     }

@@ -6,6 +6,9 @@ import random
 import smtplib
 from email.mime.text import MIMEText
 
+from dotenv import load_dotenv
+load_dotenv(override=True)
+
 from googleapiclient.discovery import build
 from sqlalchemy import text
 from flask import Flask, render_template, request, redirect, url_for, session, flash
@@ -17,8 +20,6 @@ app = Flask(__name__)
 app.secret_key = os.getenv("SECRET_KEY", "sentilytics-secret-key")
 
 # ---------------- OpenAI & YouTube ----------------
-from dotenv import load_dotenv
-load_dotenv(override=True)
 OPENAI_API_KEY  = os.getenv("OPENAI_API_KEY")
 YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY")
 openai_client = OpenAI(api_key=OPENAI_API_KEY)
@@ -146,7 +147,7 @@ def require_login():
 def current_user():
     if not is_logged_in():
         return None
-    return User.query.get(session["user_id"])
+    return db.session.get(User, session["user_id"])
 
 def require_moderator():
     if not is_logged_in():
@@ -469,7 +470,7 @@ def verify_login_otp_post():
     if "otp_user_id" not in session:
         return redirect(url_for("login"))
 
-    user = User.query.get(session["otp_user_id"])
+    user = db.session.get(User, session["otp_user_id"])
     if not user:
         return redirect(url_for("login"))
 
@@ -788,7 +789,7 @@ def moderator_toggle_user(user_id):
     if guard:
         return guard
 
-    u = User.query.get(user_id)
+    u = db.session.get(User, user_id)
     if not u:
         flash("User not found.", "danger")
         return redirect(url_for("moderator_users"))
@@ -815,7 +816,7 @@ def moderator_delete_user(user_id):
     if guard:
         return guard
 
-    u = User.query.get(user_id)
+    u = db.session.get(User, user_id)
     if not u:
         flash("User not found.", "danger")
         return redirect(url_for("moderator_users"))
@@ -832,6 +833,7 @@ def moderator_delete_user(user_id):
 
     search_ids = [s.id for s in Search.query.filter_by(user_id=u.id).all()]
     if search_ids:
+        AnalysisResult.query.filter(AnalysisResult.search_id.in_(search_ids)).delete(synchronize_session=False)
         Feedback.query.filter(Feedback.search_id.in_(search_ids)).delete(synchronize_session=False)
         Search.query.filter_by(user_id=u.id).delete(synchronize_session=False)
 
@@ -864,7 +866,7 @@ def mark_feedback_reviewed(feedback_id):
     if guard:
         return guard
 
-    fb = Feedback.query.get(feedback_id)
+    fb = db.session.get(Feedback, feedback_id)
     if not fb:
         flash("Feedback not found.", "danger")
         return redirect(url_for("moderator_feedbacks"))
