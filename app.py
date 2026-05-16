@@ -10,7 +10,6 @@ from dotenv import load_dotenv
 load_dotenv(override=True)
 
 from googleapiclient.discovery import build
-from sqlalchemy import text
 from flask import Flask, render_template, request, redirect, url_for, session, flash
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -122,18 +121,6 @@ class SystemLog(db.Model):
 
 with app.app_context():
     db.create_all()
-    with db.engine.connect() as conn:
-        for col_sql in [
-            "ALTER TABLE searches ADD COLUMN video_url TEXT",
-            "ALTER TABLE searches ADD COLUMN comment_limit INTEGER DEFAULT 30",
-            "ALTER TABLE searches ADD COLUMN comment_order TEXT DEFAULT 'newest'",
-            "ALTER TABLE analysis_results ADD COLUMN labeled_json TEXT",
-        ]:
-            try:
-                conn.execute(text(col_sql))
-                conn.commit()
-            except Exception:
-                pass
 
 # ---------------- Helpers ----------------
 def is_logged_in():
@@ -187,16 +174,13 @@ def extract_video_id(url: str) -> str:
     return match.group(1) if match else None
 
 
-def is_arabic(text: str) -> bool:
-    return bool(re.search(r'[؀-ۿ]', text))
-
 def keyword_in_text(keyword: str, text: str) -> bool:
     pattern = r'(?<![a-zA-Z0-9])' + re.escape(keyword) + r'(?![a-zA-Z0-9])'
     return bool(re.search(pattern, text, re.IGNORECASE))
 
 
 def load_comments_from_youtube(keyword: str, limit: int = 30, video_id: str = None, order: str = "newest"):
-    if not keyword or not keyword.strip():
+    if not keyword or not keyword.strip() or not video_id:
         return [], 0
 
     try:
@@ -210,57 +194,28 @@ def load_comments_from_youtube(keyword: str, limit: int = 30, video_id: str = No
             return clean_text(raw), date
 
         fetch_target = min(limit, 500)
-
         yt_order = "time" if order == "newest" else "relevance"
+        next_page_token = None
+        fetched = 0
 
-        if video_id:
-            next_page_token = None
-            fetched = 0
+        while len(comments) < fetch_target and fetched < 500:
+            params = dict(part="snippet", videoId=video_id,
+                          maxResults=100, textFormat="plainText", order=yt_order)
+            if next_page_token:
+                params["pageToken"] = next_page_token
 
-            while len(comments) < fetch_target and fetched < 500:
-                params = dict(part="snippet", videoId=video_id,
-                              maxResults=100, textFormat="plainText", order=yt_order)
-                if next_page_token:
-                    params["pageToken"] = next_page_token
-
-                resp = youtube.commentThreads().list(**params).execute()
-                for item in resp.get("items", []):
-                    text, date = parse_item(item)
-                    fetched += 1
-                    if text and len(text) > 10 and keyword_in_text(keyword, text):
-                        comments.append({"text": text, "date": date})
-                    if len(comments) >= fetch_target:
-                        break
-
-                next_page_token = resp.get("nextPageToken")
-                if not next_page_token:
-                    break
-        else:
-            lang = "ar" if is_arabic(keyword) else "en"
-            search_resp = youtube.search().list(
-                q=keyword, part="id", type="video",
-                maxResults=10, relevanceLanguage=lang
-            ).execute()
-
-            video_ids = [item["id"]["videoId"] for item in search_resp.get("items", [])]
-
-            for vid in video_ids:
+            resp = youtube.commentThreads().list(**params).execute()
+            for item in resp.get("items", []):
+                text, date = parse_item(item)
+                fetched += 1
+                if text and len(text) > 10 and keyword_in_text(keyword, text):
+                    comments.append({"text": text, "date": date})
                 if len(comments) >= fetch_target:
                     break
-                try:
-                    resp = youtube.commentThreads().list(
-                        part="snippet", videoId=vid,
-                        maxResults=100,
-                        textFormat="plainText", order=yt_order
-                    ).execute()
-                    for item in resp.get("items", []):
-                        text, date = parse_item(item)
-                        if text and len(text) > 10 and keyword_in_text(keyword, text):
-                            comments.append({"text": text, "date": date})
-                        if len(comments) >= fetch_target:
-                            break
-                except Exception:
-                    continue
+
+            next_page_token = resp.get("nextPageToken")
+            if not next_page_token:
+                break
 
         total = len(comments)
         comments = comments[:limit]
@@ -804,7 +759,7 @@ def dashboard(search_id):
         labeled_comments = json.loads(analysis.labeled_json)
         total_matches = len(labeled_comments)
     else:
-        video_id = extract_video_id(s.video_url) if s.video_url else None
+        video_id = extract_video_id(s.video_url)
         limit = s.comment_limit or 30
         order = s.comment_order or "newest"
         comments, total_matches = load_comments_from_youtube(s.keyword, limit=limit, video_id=video_id, order=order)
