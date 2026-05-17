@@ -64,17 +64,35 @@
             </div>
           </div>
 
-          <!-- Comment count slider -->
+          <!-- Comment count -->
           <div class="mb-3">
-            <label class="form-label fw-semibold d-flex justify-content-between" style="font-size:.84rem;">
-              <span>Number of Comments</span>
-              <span id="limitLabel" class="fw-bold" style="color:#4361ee;">30</span>
-            </label>
-            <input type="range" class="form-range" name="comment_limit" id="commentLimit"
-                   min="10" max="200" step="10" value="30"
-                   oninput="document.getElementById('limitLabel').textContent = this.value">
-            <div class="d-flex justify-content-between text-secondary" style="font-size:.72rem;">
-              <span>10</span><span>50</span><span>100</span><span>150</span><span>200</span>
+            <label class="form-label fw-semibold" style="font-size:.84rem;">Number of Comments</label>
+            <div class="text-secondary mb-2" style="font-size:.76rem;">
+              <i class="ti ti-info-circle me-1"></i>The more comments you fetch, the longer the analysis will take.
+            </div>
+            <div class="d-flex gap-2 mb-2">
+              <label class="order-opt flex-1" id="opt-fetchall" style="flex:1;">
+                <input type="radio" name="fetch_mode" value="all" class="d-none order-radio" onchange="toggleFetchMode(this)">
+                <div class="order-box">
+                  <i class="ti ti-infinity" style="color:#4361ee; font-size:1.1rem;"></i>
+                  <div style="font-size:.8rem; font-weight:600;">Fetch All</div>
+                </div>
+              </label>
+              <label class="order-opt flex-1" id="opt-custom" style="flex:1;">
+                <input type="radio" name="fetch_mode" value="custom" class="d-none order-radio" checked onchange="toggleFetchMode(this)">
+                <div class="order-box selected">
+                  <i class="ti ti-adjustments-horizontal" style="color:#4361ee; font-size:1.1rem;"></i>
+                  <div style="font-size:.8rem; font-weight:600;">Custom</div>
+                </div>
+              </label>
+            </div>
+            <div id="customLimitSection">
+              <input type="number" class="form-control" name="comment_limit" id="commentLimitInput"
+                     min="1" value="30" style="width:100px;">
+            </div>
+            <input type="hidden" name="fetch_all" id="fetchAllHidden" value="0">
+            <div id="fetchAllWarning" class="text-secondary mt-2 d-none" style="font-size:.78rem;">
+              <i class="ti ti-clock me-1"></i>Fetching all comments may take a while depending on the video size.
             </div>
           </div>
 
@@ -193,9 +211,20 @@
   .order-opt:has(input[value="newest"].order-radio:checked) .order-box {
     background: rgba(67,97,238,.07); border-color: #4361ee;
   }
+  .order-opt:has(input[value="all"].order-radio:checked) .order-box,
+  .order-opt:has(input[value="custom"].order-radio:checked) .order-box {
+    background: rgba(67,97,238,.07); border-color: #4361ee;
+  }
 </style>
 
 <script>
+  function toggleFetchMode(radio) {
+    const isAll = radio.value === 'all';
+    document.getElementById('fetchAllHidden').value = isAll ? '1' : '0';
+    document.getElementById('customLimitSection').style.display = isAll ? 'none' : 'block';
+    document.getElementById('fetchAllWarning').classList.toggle('d-none', !isAll);
+  }
+
   document.querySelector('#searchForm').addEventListener('submit', function() {
     document.getElementById('searchBtn').disabled = true;
     document.getElementById('searchBtn').innerHTML =

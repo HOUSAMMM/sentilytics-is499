@@ -90,7 +90,7 @@ class Feedback(db.Model):
     search_id = db.Column(db.Integer, db.ForeignKey("searches.id"), nullable=False, index=True)
 
     rating = db.Column(db.Integer, nullable=True)  # 1..5
-    message = db.Column(db.Text, nullable=False)
+    message = db.Column(db.Text, nullable=True)
 
     status = db.Column(db.String(20), default="NEW")  # NEW / REVIEWED
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -180,6 +180,7 @@ def keyword_in_text(keyword: str, text: str) -> bool:
 
 
 def load_comments_from_youtube(keyword: str, limit: int = 30, video_id: str = None, order: str = "newest"):
+    fetch_all = limit == -1
     if not keyword or not keyword.strip() or not video_id:
         return [], 0
 
@@ -193,12 +194,12 @@ def load_comments_from_youtube(keyword: str, limit: int = 30, video_id: str = No
             date = snip.get("publishedAt", "")[:10]
             return clean_text(raw), date
 
-        fetch_target = min(limit, 500)
+        fetch_target = 5000 if fetch_all else min(limit, 5000)
         yt_order = "time" if order == "newest" else "relevance"
         next_page_token = None
         fetched = 0
 
-        while len(comments) < fetch_target and fetched < 500:
+        while len(comments) < fetch_target and fetched < 5000:
             params = dict(part="snippet", videoId=video_id,
                           maxResults=100, textFormat="plainText", order=yt_order)
             if next_page_token:
@@ -218,7 +219,8 @@ def load_comments_from_youtube(keyword: str, limit: int = 30, video_id: str = No
                 break
 
         total = len(comments)
-        comments = comments[:limit]
+        if not fetch_all:
+            comments = comments[:limit]
 
         return comments, total
 
@@ -345,7 +347,7 @@ def login_post():
 
     # prevent disabled accounts
     if not user.is_active:
-        flash("Your account is disabled. Please contact the moderator.", "danger")
+        flash("Your account is disabled. Please contact the moderator at sentilyticss@gmail.com.", "danger")
         return redirect(url_for("login"))
 
     # Send OTP
@@ -627,11 +629,14 @@ def search_post():
     keyword = request.form.get("keyword", "").strip()
     video_url = request.form.get("video_url", "").strip()
 
-    try:
-        comment_limit = int(request.form.get("comment_limit", 30))
-    except ValueError:
-        comment_limit = 30
-    comment_limit = max(10, min(200, comment_limit))
+    if request.form.get("fetch_all") == "1":
+        comment_limit = -1
+    else:
+        try:
+            comment_limit = int(request.form.get("comment_limit", 30))
+        except ValueError:
+            comment_limit = 30
+        comment_limit = max(1, min(5000, comment_limit))
 
     comment_order = request.form.get("comment_order", "newest")
     if comment_order not in ("newest", "relevant"):
@@ -810,10 +815,6 @@ def submit_feedback(search_id):
 
     rating_raw = request.form.get("rating", "").strip()
     message = request.form.get("message", "").strip()
-
-    if not message:
-        flash("Feedback message is required.", "warning")
-        return redirect(url_for("dashboard", search_id=search_id))
 
     rating = None
     if rating_raw.isdigit():
