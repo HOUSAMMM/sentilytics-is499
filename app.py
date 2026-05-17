@@ -195,21 +195,19 @@ def load_comments_from_youtube(keyword: str, limit: int = 30, video_id: str = No
             return clean_text(raw), date
 
         fetch_target = 5000 if fetch_all else min(limit, 5000)
-        yt_order = "time" if order == "newest" else "relevance"
         next_page_token = None
-        fetched = 0
 
-        while len(comments) < fetch_target and fetched < 5000:
+        while len(comments) < fetch_target:
             params = dict(part="snippet", videoId=video_id,
-                          maxResults=100, textFormat="plainText", order=yt_order)
+                          maxResults=100, textFormat="plainText",
+                          order="time", searchTerms=keyword)
             if next_page_token:
                 params["pageToken"] = next_page_token
 
             resp = youtube.commentThreads().list(**params).execute()
             for item in resp.get("items", []):
                 text, date = parse_item(item)
-                fetched += 1
-                if text and len(text) > 10 and keyword_in_text(keyword, text):
+                if text and len(text) > 10:
                     comments.append({"text": text, "date": date})
                 if len(comments) >= fetch_target:
                     break
