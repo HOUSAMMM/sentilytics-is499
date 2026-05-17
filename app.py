@@ -32,7 +32,7 @@ def send_otp_email(to_email: str, otp: str):
     msg = MIMEText(
         f"Your Sentilytics verification code is:\n\n"
         f"  {otp}\n\n"
-        f"This code expires in 10 minutes."
+        f"This code expires in 1 minute."
     )
     msg["Subject"] = "Sentilytics — Verification Code"
     msg["From"]    = MAIL_EMAIL
@@ -331,7 +331,7 @@ def login_post():
 
         # Lock account after 5 failed attempts
         if user.failed_login_attempts >= 5:
-            user.locked_until = datetime.utcnow() + timedelta(minutes=10)
+            user.locked_until = datetime.utcnow() + timedelta(minutes=1)
             user.failed_login_attempts = 0
             flash("Too many failed attempts. Account locked for 10 minutes.", "danger")
         else:
@@ -353,7 +353,7 @@ def login_post():
     # Send OTP
     otp = generate_otp()
     user.otp_code       = otp
-    user.otp_expires_at = datetime.utcnow() + timedelta(minutes=10)
+    user.otp_expires_at = datetime.utcnow() + timedelta(minutes=1)
     db.session.commit()
 
     try:
@@ -404,7 +404,7 @@ def register_post():
         "email": email,
         "password_hash": generate_password_hash(password),
         "otp": otp,
-        "otp_expires_at": (datetime.utcnow() + timedelta(minutes=10)).isoformat()
+        "otp_expires_at": (datetime.utcnow() + timedelta(minutes=1)).isoformat()
     }
 
     try:
@@ -510,7 +510,7 @@ def forgot_password_post():
     if user and user.is_active:
         otp = generate_otp()
         user.otp_code = otp
-        user.otp_expires_at = datetime.utcnow() + timedelta(minutes=10)
+        user.otp_expires_at = datetime.utcnow() + timedelta(minutes=1)
         db.session.commit()
         try:
             send_otp_email(user.email, otp)
