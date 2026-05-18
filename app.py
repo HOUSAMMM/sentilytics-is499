@@ -377,6 +377,10 @@ def register_post():
     if not name or not email or not password:
         flash("Please fill all fields.", "warning")
         return redirect(url_for("register"))
+    if not re.match(r'^[A-Za-z\s]+$', name):
+        flash("Name must contain letters only, no numbers.", "warning")
+        return redirect(url_for('register'))
+
 
     if User.query.filter_by(email=email).first():
         flash("This email is already registered. Please login.", "warning")
@@ -959,6 +963,9 @@ def account_edit_post():
 
     if not name:
         flash("Name is required.", "warning")
+        return redirect(url_for("account_edit"))
+    if not re.match(r'^[A-Za-z\s]+$', name):
+        flash("Name must contain letters only, no numbers.", "warning")
         return redirect(url_for("account_edit"))
 
     old_name = u.name
